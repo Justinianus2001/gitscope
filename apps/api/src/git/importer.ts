@@ -17,6 +17,7 @@ export class ImporterError extends Error {
 }
 
 export interface ImportOptions {
+  runId?: string;
   timeoutMs?: number;
   maxOutputBytes?: number;
   signal?: AbortSignal;
@@ -41,29 +42,41 @@ export async function importRepository(
     throw new ImporterError('REPOSITORY_NOT_FOUND', `Repository ${repoId} not found.`);
   }
 
-  // 2. Concurrency guard: check for existing active run
+  // 2. Concurrency guard: check for existing active run (except if it matches our pre-queued runId)
   const activeRun = db
-    .prepare("SELECT id FROM analysis_runs WHERE repo_id = ? AND status IN ('queued', 'running')")
-    .get(repoId);
+    .prepare(
+      "SELECT id, status FROM analysis_runs WHERE repo_id = ? AND status IN ('queued', 'running')",
+    )
+    .get(repoId) as { id: string; status: string } | undefined;
 
-  if (activeRun) {
+  if (activeRun && activeRun.id !== options.runId) {
     throw new ImporterError(
       'ANALYSIS_ALREADY_RUNNING',
       'An analysis run is already queued or in progress for this repository.',
     );
   }
 
-  // 3. Create a new running analysis run record
-  const runId = crypto.randomUUID();
+  // 3. Create or update running analysis run record
+  const runId = options.runId ?? crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(
-    `
-    INSERT INTO analysis_runs (
-      id, repo_id, status, started_at, finished_at, error_code, error_message, commits_processed, created_at
-    ) VALUES (?, ?, 'running', ?, NULL, NULL, NULL, 0, ?)
-  `,
-  ).run(runId, repoId, now, now);
+  if (!activeRun) {
+    db.prepare(
+      `
+      INSERT INTO analysis_runs (
+        id, repo_id, status, started_at, finished_at, error_code, error_message, commits_processed, created_at
+      ) VALUES (?, ?, 'running', ?, NULL, NULL, NULL, 0, ?)
+    `,
+    ).run(runId, repoId, now, now);
+  } else {
+    db.prepare(
+      `
+      UPDATE analysis_runs
+      SET status = 'running', started_at = ?
+      WHERE id = ?
+    `,
+    ).run(now, runId);
+  }
 
   try {
     // 4. Retrieve default branch

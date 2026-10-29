@@ -28,25 +28,31 @@ GitScope operates 100% locally: it requires no third-party accounts, performs no
    cp .env.example .env
    ```
 
-   Configure `ALLOWED_REPOSITORY_ROOTS` to specify directories where local Git repositories can be registered.
+   Configure `ALLOWED_REPOSITORY_ROOTS` to specify directories where local Git repositories can be registered (e.g. `./sample-repositories` or your local workspace directory).
 
-3. **Run Typecheck and Tests**
+3. **Run Typecheck, Lint, and Tests**
 
    ```bash
    pnpm typecheck
+   pnpm lint
    pnpm test
    ```
 
-4. **Build Packages**
+4. **Build All Packages**
 
    ```bash
    pnpm build
    ```
 
-5. **Start API Server (Development)**
-   ```bash
-   pnpm --filter @gitscope/api dev
-   ```
+5. **Start Development Services**
+   - In terminal 1 (Fastify API on `http://127.0.0.1:4000`):
+     ```bash
+     pnpm dev:api
+     ```
+   - In terminal 2 (Next.js Web on `http://localhost:3000`):
+     ```bash
+     pnpm dev:web
+     ```
 
 ---
 
@@ -58,9 +64,9 @@ GitScope is structured as a modular monorepo using pnpm workspaces:
 gitscope/
 ├── apps/
 │   ├── api/             # Fastify REST API, SQLite persistence, Git ingestion & analytics engine
-│   └── web/             # Next.js frontend with Tailwind CSS, React Flow & Recharts
+│   └── web/             # Next.js 15 frontend with Tailwind CSS, Lucide icons, responsive shell
 ├── packages/
-│   └── shared/          # TypeScript types, Zod schemas, shared contracts
+│   └── shared/          # Shared TypeScript contracts, Zod schemas, API DTOs
 ├── docs/
 │   ├── implementation-plan.md  # Detailed progress, milestones, status & next steps
 │   ├── architecture.md         # Component and data flow documentation
@@ -73,12 +79,103 @@ gitscope/
 
 ---
 
+## REST API Specification
+
+All endpoints return JSON responses. Errors follow a consistent structure:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable sanitized message"
+  }
+}
+```
+
+### 1. Health
+
+- `GET /api/health`: Returns `{ "status": "ok" }`.
+
+### 2. Repositories
+
+- `POST /api/repositories`: Register a local repository.
+  - Request: `{ "path": "./sample-repositories/my-repo" }`
+  - Response (`201 Created` or `200 OK` if already registered):
+    ```json
+    {
+      "data": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "my-repo",
+        "defaultBranch": null,
+        "lastAnalyzedAt": null,
+        "createdAt": "2026-10-29T14:00:00.000Z",
+        "updatedAt": "2026-10-29T14:00:00.000Z",
+        "analysisStatus": null,
+        "commitsProcessed": 0
+      },
+      "isExisting": true
+    }
+    ```
+- `GET /api/repositories`: List registered repositories with analysis status.
+- `GET /api/repositories/:id`: Get single repository details.
+- `POST /api/repositories/:id/analyze`: Trigger analysis run in background.
+  - Response: `202 Accepted` with `{ "data": { "runId": "uuid", "status": "queued" } }`.
+  - Rejects simultaneous runs with `409 Conflict`.
+- `GET /api/repositories/:id/analysis`: Get latest analysis status and processed commit count.
+
+### 3. Commits & File History
+
+- `GET /api/repositories/:id/commits?limit=50&cursor=...&branch=...&author=...&from=...&to=...&path=...`:
+  - Deterministic cursor pagination ordered by `author_time DESC, hash DESC`.
+  - Cursor is a base64url-encoded token with stable tie-breaking.
+  - Response:
+    ```json
+    {
+      "data": [
+        {
+          "hash": "c0ffee1234567890c0ffee1234567890c0ffee12",
+          "abbreviatedHash": "c0ffee1",
+          "authorName": "Alice Dev",
+          "authorEmail": "alice@example.com",
+          "authorTime": "2026-10-29T10:00:00.000Z",
+          "committerTime": "2026-10-29T10:00:00.000Z",
+          "subject": "Initial commit",
+          "body": null,
+          "parentHashes": [],
+          "parentCount": 0,
+          "refs": ["main"]
+        }
+      ],
+      "page": {
+        "nextCursor": "eyJ0IjoiMjAyNi...In0"
+      }
+    }
+    ```
+- `GET /api/repositories/:id/commits/:hash`:
+  - Returns commit metadata, ordered parents, branch/tag refs, and changed files with additions/deletions.
+  - Supports 40-character full hash or abbreviated hash (7-40 hex chars).
+- `GET /api/repositories/:id/files/:path/history?limit=50&cursor=...`:
+  - Returns commits modifying the URL-decoded relative file path, preserving history across renames.
+
+### Standard Error Codes
+
+| HTTP Status | Error Code                                                                            | Description                                           |
+| ----------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `400`       | `INVALID_REQUEST` / `INVALID_ID` / `INVALID_HASH` / `INVALID_PATH` / `INVALID_CURSOR` | Request validation error                              |
+| `403`       | `PATH_NOT_ALLOWED`                                                                    | Path is outside configured `ALLOWED_REPOSITORY_ROOTS` |
+| `404`       | `PATH_NOT_FOUND` / `REPOSITORY_NOT_FOUND` / `COMMIT_NOT_FOUND`                        | Resource not found                                    |
+| `409`       | `ANALYSIS_ALREADY_RUNNING`                                                            | An analysis run is already in progress                |
+| `422`       | `NOT_A_GIT_REPOSITORY`                                                                | Path exists but does not contain a Git working tree   |
+| `500`       | `INTERNAL_SERVER_ERROR`                                                               | Unexpected internal server error (sanitized)          |
+
+---
+
 ## Security & Privacy Model
 
 - **Local-first**: Zero telemetry, zero cloud synchronizations, zero external AI APIs.
-- **Path allowlisting**: Strict enforcement of `ALLOWED_REPOSITORY_ROOTS`. Paths are resolved and canonicalized against symlinks and traversal before repository operations.
-- **Safe process invocation**: Git commands use argument arrays via Node child process APIs. No user input is ever passed to a shell command string.
-- **Data persistence**: Stored locally in a single SQLite database (`better-sqlite3`) with foreign key constraints enabled and sanitized error responses.
+- **Path allowlisting**: Strict enforcement of `ALLOWED_REPOSITORY_ROOTS`. Paths are resolved with `fs.realpathSync` to defeat symlink escapes and traversal before any Git operations.
+- **Safe process invocation**: Git CLI commands execute via argument arrays without shell interpolation. Execution timeouts and max buffer caps are enforced.
+- **Data persistence**: Stored locally in a single SQLite database (`better-sqlite3`) with foreign key constraints enabled.
 
 ---
 

@@ -1,7 +1,7 @@
 # GitScope Implementation Plan
 
 **Product:** GitScope  
-**Status:** In Progress (Milestone 0, 1, and 2 Completed)  
+**Status:** In Progress (Milestones 0, 1, 2, and 3 Completed)  
 **Last Updated:** 2026-10-29
 
 ---
@@ -70,17 +70,32 @@
 - [x] Test fixture helpers (`fixture-helper.ts`) creating real on-the-fly Git repositories for unit and integration tests.
 - [x] 100% passing tests across runner, path validator, parser, and importer (26 tests in `apps/api`, 4 in `packages/shared`, 30 total).
 
-### Milestone 3: Commit Explorer & Web Foundation (Next)
+### Milestone 3: Commit Explorer & Web Foundation (Completed)
 
-- [ ] Repository endpoints (`POST /api/repositories`, `GET /api/repositories`, `POST /api/repositories/:id/analyze`, `GET /api/repositories/:id/analysis`).
-- [ ] Commit endpoints with cursor pagination and filters (`GET /api/repositories/:id/commits`, `GET /api/repositories/:id/commits/:hash`, `GET /api/repositories/:id/files/:path/history`).
-- [ ] Next.js frontend setup with repository list, import dialog, and commit explorer table/detail views.
+- [x] Production REST API endpoints:
+  - [x] `POST /api/repositories`: register repository with allowlist validation and idempotent duplicate handling.
+  - [x] `GET /api/repositories`: list repositories with latest analysis status and commit counts.
+  - [x] `GET /api/repositories/:id`: get repository details.
+  - [x] `POST /api/repositories/:id/analyze`: asynchronous analysis run with `202 Accepted` and `409 Conflict` concurrency prevention.
+  - [x] `GET /api/repositories/:id/analysis`: poll latest analysis status.
+  - [x] `GET /api/repositories/:id/commits`: deterministic cursor pagination with tie-breaking (`author_time DESC, hash DESC`), author, path, date range, and branch reachability filters.
+  - [x] `GET /api/repositories/:id/commits/:hash`: full commit details with parent hashes, refs, and changed file numstats.
+  - [x] `GET /api/repositories/:id/files/:path/history`: file change history across commits, supporting renamed files and path normalization.
+- [x] Comprehensive test suite covering repository management, cursor pagination, path traversal defense, and commit details (53 total passing tests).
+- [x] Next.js Web Application (`apps/web`):
+  - [x] Next.js 15, React 19, Tailwind CSS, Lucide icons.
+  - [x] Typed API client (`src/lib/api.ts`) with centralized error handling.
+  - [x] Application shell with responsive navigation (`layout.tsx`).
+  - [x] Repository dashboard with registration form, analysis trigger, and empty states (`page.tsx`).
+  - [x] Repository detail & commit explorer page with filter bar, commit table, cursor pagination, and commit detail drawer showing file diff stats (`repositories/[id]/page.tsx`).
+  - [x] Successful static & dynamic production build (`next build`).
 
-### Milestone 4: Interactive Commit Graph (Pending)
+### Milestone 4: Interactive Commit Graph (Next)
 
 - [ ] Bounded graph endpoint (`GET /api/repositories/:id/graph`).
-- [ ] React Flow graph component with branch/tag ref badges and merge commit distinctions.
-- [ ] Graph selection and commit detail sync.
+- [ ] Topological sorting and coordinate assignment utility.
+- [ ] React Flow interactive commit ancestry graph with branch and tag ref badges.
+- [ ] Node selection syncing with commit detail panel.
 
 ### Milestone 5: Analytics & Insights (Pending)
 
@@ -102,11 +117,12 @@
 
 - Scripts on Windows PowerShell require `.cmd` extensions (e.g. `pnpm.cmd`) when execution policies restrict `.ps1` invocations.
 - Native binary builds for `better-sqlite3` require prebuild installation on Windows environments where build scripts are restricted by default in pnpm 10. `onlyBuiltDependencies` is configured in `package.json`.
+- Browser-based Next.js applications cannot directly access the local filesystem due to standard browser sandboxing; repository registration must always be validated through the local Fastify API.
 
 ---
 
 ## 5. Next Steps
 
-1. Begin Milestone 3: implement repository HTTP endpoints (`POST /api/repositories`, `GET /api/repositories`, `POST /api/repositories/:id/analyze`, `GET /api/repositories/:id/analysis`) integrating `validateRepositoryPath` and `importRepository`.
-2. Implement commit query and filtering services with cursor pagination (`GET /api/repositories/:id/commits`, `GET /api/repositories/:id/commits/:hash`, `GET /api/repositories/:id/files/:path/history`).
-3. Set up `@gitscope/web` Next.js frontend with Tailwind CSS and repository overview/explorer pages.
+1. Begin Milestone 4: implement `GET /api/repositories/:id/graph?ref=...&limit=300` bounded ancestry endpoint.
+2. Implement topological graph layout generator.
+3. Install and integrate `@xyflow/react` (React Flow) in `apps/web` for interactive commit graph visualization.
