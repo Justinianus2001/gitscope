@@ -74,3 +74,4 @@ CREATE TABLE IF NOT EXISTS file_changes (
 CREATE INDEX IF NOT EXISTS idx_file_changes_repo_path ON file_changes(repo_id, path);
 CREATE INDEX IF NOT EXISTS idx_file_changes_repo_commit ON file_changes(repo_id, commit_hash);
 CREATE INDEX IF NOT EXISTS idx_file_changes_repo_change_type ON file_changes(repo_id, change_type);
+

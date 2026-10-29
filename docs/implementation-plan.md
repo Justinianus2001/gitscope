@@ -1,7 +1,7 @@
 # GitScope Implementation Plan
 
 **Product:** GitScope  
-**Status:** In Progress (Milestone 0 Completed, Milestone 1 In Progress)  
+**Status:** In Progress (Milestone 0, 1, and 2 Completed)  
 **Last Updated:** 2026-10-29
 
 ---
@@ -61,15 +61,16 @@
   - [x] Verification of lint, typecheck, and test commands (100% passing).
   - [x] Root `README.md` and initial setup documentation.
 
-### Milestone 2: Git Adapter & Importer (Pending)
+### Milestone 2: Git Adapter & Importer (Completed)
 
-- [ ] Safe Git process execution wrapper (`runner.ts`).
-- [ ] Path canonicalization & security validation (`ALLOWED_REPOSITORY_ROOTS`).
-- [ ] Structured Git parser for log, refs, and numstat with NUL delimiter support (`parser.ts`).
-- [ ] In-process background analysis coordinator and transactional importer (`importer.ts`).
-- [ ] Fixture repositories and integration tests.
+- [x] Safe Git process execution wrapper (`runner.ts`) via `execFile` with argument arrays, explicit `cwd`, timeout, output buffer limit, cancellation, and error sanitization.
+- [x] Path canonicalization & security validation (`path-validator.ts`) defending against path traversal, symlink escapes, and arbitrary directory access outside `ALLOWED_REPOSITORY_ROOTS`.
+- [x] Structured Git parser for log, refs, and numstat with NUL delimiter support (`parser.ts`) handling renames, binary files, Unicode/spaces in filenames, and merge commits with parent ordering preserved.
+- [x] In-process background analysis coordinator and transactional importer (`importer.ts`) with concurrency protection, status tracking, idempotency, and transactional recovery preserving existing records upon failure.
+- [x] Test fixture helpers (`fixture-helper.ts`) creating real on-the-fly Git repositories for unit and integration tests.
+- [x] 100% passing tests across runner, path validator, parser, and importer (26 tests in `apps/api`, 4 in `packages/shared`, 30 total).
 
-### Milestone 3: Commit Explorer & Web Foundation (Pending)
+### Milestone 3: Commit Explorer & Web Foundation (Next)
 
 - [ ] Repository endpoints (`POST /api/repositories`, `GET /api/repositories`, `POST /api/repositories/:id/analyze`, `GET /api/repositories/:id/analysis`).
 - [ ] Commit endpoints with cursor pagination and filters (`GET /api/repositories/:id/commits`, `GET /api/repositories/:id/commits/:hash`, `GET /api/repositories/:id/files/:path/history`).
@@ -106,6 +107,6 @@
 
 ## 5. Next Steps
 
-1. Begin Milestone 2: implement Git execution wrapper (`runner.ts`) with argument arrays, timeouts, output limits, and path canonicalization.
-2. Implement structured Git log and numstat parser (`parser.ts`) with NUL-delimiter handling.
-3. Implement repository ingestion service (`importer.ts`) and create Git test fixtures.
+1. Begin Milestone 3: implement repository HTTP endpoints (`POST /api/repositories`, `GET /api/repositories`, `POST /api/repositories/:id/analyze`, `GET /api/repositories/:id/analysis`) integrating `validateRepositoryPath` and `importRepository`.
+2. Implement commit query and filtering services with cursor pagination (`GET /api/repositories/:id/commits`, `GET /api/repositories/:id/commits/:hash`, `GET /api/repositories/:id/files/:path/history`).
+3. Set up `@gitscope/web` Next.js frontend with Tailwind CSS and repository overview/explorer pages.
