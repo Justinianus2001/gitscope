@@ -9,6 +9,7 @@ import { migrate } from './db/migrator.js';
 import { healthRoutes } from './routes/health.js';
 import { repositoryRoutes } from './routes/repositories.js';
 import { commitRoutes } from './routes/commits.js';
+import { graphRoutes } from './routes/graph.js';
 
 export interface AppOptions {
   config?: EnvConfig;
@@ -75,6 +76,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
   await fastify.register(healthRoutes);
   await fastify.register(repositoryRoutes);
   await fastify.register(commitRoutes);
+  await fastify.register(graphRoutes);
 
   // Graceful shutdown hook
   fastify.addHook('onClose', async () => {

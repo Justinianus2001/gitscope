@@ -1,7 +1,7 @@
 # GitScope Implementation Plan
 
 **Product:** GitScope  
-**Status:** In Progress (Milestones 0, 1, 2, and 3 Completed)  
+**Status:** In Progress (Milestones 0, 1, 2, 3, and 4 Completed)  
 **Last Updated:** 2026-10-29
 
 ---
@@ -90,14 +90,29 @@
   - [x] Repository detail & commit explorer page with filter bar, commit table, cursor pagination, and commit detail drawer showing file diff stats (`repositories/[id]/page.tsx`).
   - [x] Successful static & dynamic production build (`next build`).
 
-### Milestone 4: Interactive Commit Graph (Next)
+### Milestone 4: Interactive Commit Graph (Completed)
 
-- [ ] Bounded graph endpoint (`GET /api/repositories/:id/graph`).
-- [ ] Topological sorting and coordinate assignment utility.
-- [ ] React Flow interactive commit ancestry graph with branch and tag ref badges.
-- [ ] Node selection syncing with commit detail panel.
+- [x] Production Graph & Ref REST API (`apps/api/src/routes/graph.ts`):
+  - [x] `GET /api/repositories/:id/graph?ref=...&limit=300`: recursive CTE ancestry query bounded by `limit + 1` to reliably detect history truncation, ordered deterministically by `author_time DESC, hash DESC`.
+  - [x] Preserves ordered commit parents (`commit_parents`) and associated branch/tag references (`refs`).
+  - [x] Supports explicit branch or tag ref selection, falling back gracefully to repository `default_branch`, first branch, or latest commit.
+  - [x] Strict input validation (`UUID_REGEX`, `getGraphQuerySchema`), sanitized errors (`REPOSITORY_NOT_FOUND`, `REF_NOT_FOUND`), and repository isolation.
+  - [x] `GET /api/repositories/:id/refs`: endpoint returning all available branches and tags for repo.
+  - [x] Comprehensive integration tests in `apps/api/src/__tests__/graph.test.ts` (9 tests covering linear history, branch divergence, multi-parent merge commits, invalid refs, empty repositories, limit bounding/truncation, and repository isolation).
+- [x] Standalone Graph Layout Engine (`apps/web/src/lib/graph-layout.ts`):
+  - [x] Pure, deterministic function (`computeGraphLayout`) independent of UI components.
+  - [x] Topological sort using Kahn's algorithm with priority queue resolving children strictly before parents.
+  - [x] Branch lane allocation algorithm tracking active branch paths across forks and multi-parent merge converges.
+  - [x] Graceful truncation handling without dangling edges to truncated parents.
+  - [x] Unit test suite in `apps/web/src/__tests__/graph-layout.test.ts` (5 tests covering linear paths, merge convergence, disconnected/truncated graphs, and 100% deterministic layout guarantee).
+- [x] Interactive Frontend (`apps/web`):
+  - [x] `@xyflow/react` integration with custom `CommitNode` component featuring lane color accents, abbreviated commit hash, merge badge, and branch/tag badges.
+  - [x] `CommitGraph` component with zoom/pan controls, minimap, background grid, ref/branch selector dropdown, loading skeleton, error banner, and truncation indicator banner.
+  - [x] Selection interaction: clicking a commit node opens the existing `CommitDrawer` slide-over view with file diff statistics.
+  - [x] Accessible list view fallback allowing seamless toggling between interactive visual graph and tabular commit explorer.
+- [x] Total passing test suite across monorepo: 68 tests (100% pass rate).
 
-### Milestone 5: Analytics & Insights (Pending)
+### Milestone 5: Analytics & Insights (Next)
 
 - [ ] Commit activity aggregation (`GET /api/repositories/:id/activity`) with day/week buckets and zero-fill.
 - [ ] File hotspot calculations (`GET /api/repositories/:id/hotspots`).
@@ -123,6 +138,6 @@
 
 ## 5. Next Steps
 
-1. Begin Milestone 4: implement `GET /api/repositories/:id/graph?ref=...&limit=300` bounded ancestry endpoint.
-2. Implement topological graph layout generator.
-3. Install and integrate `@xyflow/react` (React Flow) in `apps/web` for interactive commit graph visualization.
+1. Begin Milestone 5: implement analytics REST APIs (`activity`, `hotspots`, `co-changes`).
+2. Add metric definitions and calculation documentation in `docs/metrics.md`.
+3. Integrate Recharts in `apps/web` for commit activity charts, hotspot tables, and co-change association explorer.

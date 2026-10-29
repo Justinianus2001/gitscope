@@ -6,6 +6,9 @@ import type {
   CommitDetail,
   GetFileHistoryResponse,
   AnalysisStatus,
+  GetGraphResponse,
+  RefItem,
+  GetRefsResponse,
 } from '@gitscope/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
@@ -113,5 +116,24 @@ export const api = {
     const encodedPath = encodeURIComponent(filePath);
     const endpoint = `/api/repositories/${id}/files/${encodedPath}/history${qs ? `?${qs}` : ''}`;
     return request<GetFileHistoryResponse>(endpoint);
+  },
+
+  async getGraph(
+    id: string,
+    query: { ref?: string; limit?: number } = {},
+  ): Promise<GetGraphResponse['data']> {
+    const params = new URLSearchParams();
+    if (query.ref) params.set('ref', query.ref);
+    if (query.limit) params.set('limit', String(query.limit));
+
+    const qs = params.toString();
+    const endpoint = `/api/repositories/${id}/graph${qs ? `?${qs}` : ''}`;
+    const res = await request<GetGraphResponse>(endpoint);
+    return res.data;
+  },
+
+  async getRefs(id: string): Promise<RefItem[]> {
+    const res = await request<GetRefsResponse>(`/api/repositories/${id}/refs`);
+    return res.data;
   },
 };

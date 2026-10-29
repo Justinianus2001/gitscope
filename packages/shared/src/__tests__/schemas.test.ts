@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { envConfigSchema, repositorySchema, changeTypeSchema } from '../index.js';
+import {
+  envConfigSchema,
+  repositorySchema,
+  changeTypeSchema,
+  getGraphQuerySchema,
+  getGraphResponseSchema,
+} from '../index.js';
 
 describe('Shared Schemas', () => {
   it('validates and applies defaults for environment configuration', () => {
@@ -37,5 +43,32 @@ describe('Shared Schemas', () => {
       updatedAt: '2026-10-29T00:00:00.000Z',
     };
     expect(repositorySchema.safeParse(validRepo).success).toBe(true);
+  });
+
+  it('validates graph query defaults and response schemas', () => {
+    const parsedQuery = getGraphQuerySchema.parse({});
+    expect(parsedQuery.limit).toBe(300);
+    expect(parsedQuery.ref).toBeUndefined();
+
+    const customQuery = getGraphQuerySchema.parse({ ref: 'feature/login', limit: '150' });
+    expect(customQuery.limit).toBe(150);
+    expect(customQuery.ref).toBe('feature/login');
+
+    const validGraphResponse = {
+      data: {
+        nodes: [
+          {
+            hash: '0123456789abcdef0123456789abcdef01234567',
+            subject: 'feat: add graph',
+            authorTime: '2026-10-29T10:00:00.000Z',
+            parentHashes: ['abcdef0123456789abcdef0123456789abcdef01'],
+            refs: ['main', 'v1.0.0'],
+          },
+        ],
+        truncated: false,
+        ref: 'main',
+      },
+    };
+    expect(getGraphResponseSchema.safeParse(validGraphResponse).success).toBe(true);
   });
 });

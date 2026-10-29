@@ -15,6 +15,8 @@ import {
   GitCommit,
   GitBranch,
   GitMerge,
+  GitGraph,
+  List,
   Search,
   Calendar,
   FileCode,
@@ -28,10 +30,12 @@ import {
   CheckCircle2,
   ChevronRight,
 } from 'lucide-react';
+import { CommitGraph } from '@/components/graph/commit-graph';
 
 export default function RepositoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: repoId } = use(params);
 
+  const [activeView, setActiveView] = useState<'graph' | 'commits'>('graph');
   const [repo, setRepo] = useState<RepositoryListItem | null>(null);
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -224,163 +228,209 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            loadCommits(true);
-          }}
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      {/* View Switcher Tabs */}
+      <div className="flex items-center gap-2 border-b border-neutral-800 pb-3">
+        <button
+          onClick={() => setActiveView('graph')}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+            activeView === 'graph'
+              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+          }`}
         >
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1">Author</label>
-            <input
-              type="text"
-              placeholder="Name or email..."
-              value={authorFilter}
-              onChange={(e) => setAuthorFilter(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
+          <GitGraph className="h-4 w-4" />
+          <span>Interactive Graph</span>
+        </button>
 
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1">File Path</label>
-            <input
-              type="text"
-              placeholder="e.g. src/index.ts"
-              value={pathFilter}
-              onChange={(e) => setPathFilter(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
+        <button
+          onClick={() => setActiveView('commits')}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+            activeView === 'commits'
+              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+          }`}
+        >
+          <List className="h-4 w-4" />
+          <span>Commit Explorer</span>
+        </button>
+      </div>
 
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1">From Date</label>
-            <input
-              type="date"
-              value={fromFilter}
-              onChange={(e) => setFromFilter(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1">To Date</label>
-            <input
-              type="date"
-              value={toFilter}
-              onChange={(e) => setToFilter(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4 justify-end mt-1">
-            <button
-              type="button"
-              onClick={() => {
-                handleClearFilters();
+      {activeView === 'graph' ? (
+        <CommitGraph
+          repoId={repoId}
+          defaultBranch={repo?.defaultBranch}
+          onSelectCommit={handleSelectCommit}
+          onSwitchToListView={() => setActiveView('commits')}
+        />
+      ) : (
+        <>
+          {/* Filter Bar */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
                 loadCommits(true);
               }}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
             >
-              Clear
-            </button>
-            <button
-              type="submit"
-              className="rounded-md bg-neutral-800 px-4 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 transition-colors"
-            >
-              Filter Commits
-            </button>
-          </div>
-        </form>
-      </div>
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  Author
+                </label>
+                <input
+                  type="text"
+                  placeholder="Name or email..."
+                  value={authorFilter}
+                  onChange={(e) => setAuthorFilter(e.target.value)}
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
 
-      {/* Commits List */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-xs text-rose-400">
-            <AlertTriangle className="mx-auto h-6 w-6 text-rose-500 mb-2" />
-            <span>{error}</span>
-          </div>
-        ) : commits.length === 0 ? (
-          <div className="p-12 text-center">
-            <GitCommit className="mx-auto h-8 w-8 text-neutral-600 mb-2" />
-            <h4 className="text-sm font-medium text-white">No commits found</h4>
-            <p className="mt-1 text-xs text-neutral-400">
-              No commits match the selected filters or the repository has not been indexed yet.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-neutral-800">
-            {commits.map((commit) => {
-              const isMerge = commit.parentCount > 1;
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  File Path
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. src/index.ts"
+                  value={pathFilter}
+                  onChange={(e) => setPathFilter(e.target.value)}
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
 
-              return (
-                <div
-                  key={commit.hash}
-                  onClick={() => handleSelectCommit(commit.hash)}
-                  className="flex items-center justify-between gap-4 p-4 hover:bg-neutral-800/40 cursor-pointer transition-colors"
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={fromFilter}
+                  onChange={(e) => setFromFilter(e.target.value)}
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={toFilter}
+                  onChange={(e) => setToFilter(e.target.value)}
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4 justify-end mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClearFilters();
+                    loadCommits(true);
+                  }}
+                  className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors"
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <span className="mt-0.5 shrink-0 rounded bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300">
-                      {commit.abbreviatedHash}
-                    </span>
+                  Clear
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-neutral-800 px-4 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 transition-colors"
+                >
+                  Filter Commits
+                </button>
+              </div>
+            </form>
+          </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-white line-clamp-1">
-                          {commit.subject}
+          {/* Commits List */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
+            {loading ? (
+              <div className="flex h-64 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center text-xs text-rose-400">
+                <AlertTriangle className="mx-auto h-6 w-6 text-rose-500 mb-2" />
+                <span>{error}</span>
+              </div>
+            ) : commits.length === 0 ? (
+              <div className="p-12 text-center">
+                <GitCommit className="mx-auto h-8 w-8 text-neutral-600 mb-2" />
+                <h4 className="text-sm font-medium text-white">No commits found</h4>
+                <p className="mt-1 text-xs text-neutral-400">
+                  No commits match the selected filters or the repository has not been indexed yet.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-neutral-800">
+                {commits.map((commit) => {
+                  const isMerge = commit.parentCount > 1;
+
+                  return (
+                    <div
+                      key={commit.hash}
+                      onClick={() => handleSelectCommit(commit.hash)}
+                      className="flex items-center justify-between gap-4 p-4 hover:bg-neutral-800/40 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="mt-0.5 shrink-0 rounded bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300">
+                          {commit.abbreviatedHash}
                         </span>
-                        {isMerge && (
-                          <span className="inline-flex items-center gap-1 rounded bg-purple-950 px-1.5 py-0.5 text-[10px] font-medium text-purple-300 border border-purple-800">
-                            <GitMerge className="h-3 w-3" />
-                            <span>Merge</span>
-                          </span>
-                        )}
-                        {commit.refs?.map((ref) => (
-                          <span
-                            key={ref}
-                            className="inline-flex items-center gap-1 rounded bg-blue-950 px-1.5 py-0.5 text-[10px] font-medium text-blue-300 border border-blue-800"
-                          >
-                            <Tag className="h-2.5 w-2.5" />
-                            <span>{ref}</span>
-                          </span>
-                        ))}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm text-white line-clamp-1">
+                              {commit.subject}
+                            </span>
+                            {isMerge && (
+                              <span className="inline-flex items-center gap-1 rounded bg-purple-950 px-1.5 py-0.5 text-[10px] font-medium text-purple-300 border border-purple-800">
+                                <GitMerge className="h-3 w-3" />
+                                <span>Merge</span>
+                              </span>
+                            )}
+                            {commit.refs?.map((ref) => (
+                              <span
+                                key={ref}
+                                className="inline-flex items-center gap-1 rounded bg-blue-950 px-1.5 py-0.5 text-[10px] font-medium text-blue-300 border border-blue-800"
+                              >
+                                <Tag className="h-2.5 w-2.5" />
+                                <span>{ref}</span>
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
+                            <span>{commit.authorName}</span>
+                            <span>&bull;</span>
+                            <span>{new Date(commit.authorTime).toLocaleString()}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
-                        <span>{commit.authorName}</span>
-                        <span>&bull;</span>
-                        <span>{new Date(commit.authorTime).toLocaleString()}</span>
-                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-neutral-600" />
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+            )}
 
-                  <ChevronRight className="h-4 w-4 shrink-0 text-neutral-600" />
-                </div>
-              );
-            })}
+            {/* Pagination */}
+            {nextCursor && !loading && (
+              <div className="border-t border-neutral-800 p-4 text-center">
+                <button
+                  onClick={() => loadCommits(false, nextCursor)}
+                  disabled={loadingMore}
+                  className="rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 transition-colors"
+                >
+                  {loadingMore ? 'Loading next page...' : 'Load More Commits'}
+                </button>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Pagination */}
-        {nextCursor && !loading && (
-          <div className="border-t border-neutral-800 p-4 text-center">
-            <button
-              onClick={() => loadCommits(false, nextCursor)}
-              disabled={loadingMore}
-              className="rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 transition-colors"
-            >
-              {loadingMore ? 'Loading next page...' : 'Load More Commits'}
-            </button>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Commit Detail Drawer */}
       {selectedCommitHash && (

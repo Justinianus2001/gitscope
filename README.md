@@ -157,13 +157,22 @@ All endpoints return JSON responses. Errors follow a consistent structure:
 - `GET /api/repositories/:id/files/:path/history?limit=50&cursor=...`:
   - Returns commits modifying the URL-decoded relative file path, preserving history across renames.
 
+### 4. Interactive Graph & Refs
+
+- `GET /api/repositories/:id/graph?ref=...&limit=300`:
+  - Returns a bounded ancestry commit DAG with full hashes, ordered parents, subjects, timestamps, and refs.
+  - Returns `{ "data": { "nodes": [...], "truncated": boolean, "ref": string | null } }`.
+  - Supports default branch or explicit branch/tag refs.
+- `GET /api/repositories/:id/refs`:
+  - Returns all branch and tag references for the repository.
+
 ### Standard Error Codes
 
 | HTTP Status | Error Code                                                                            | Description                                           |
 | ----------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `400`       | `INVALID_REQUEST` / `INVALID_ID` / `INVALID_HASH` / `INVALID_PATH` / `INVALID_CURSOR` | Request validation error                              |
 | `403`       | `PATH_NOT_ALLOWED`                                                                    | Path is outside configured `ALLOWED_REPOSITORY_ROOTS` |
-| `404`       | `PATH_NOT_FOUND` / `REPOSITORY_NOT_FOUND` / `COMMIT_NOT_FOUND`                        | Resource not found                                    |
+| `404`       | `PATH_NOT_FOUND` / `REPOSITORY_NOT_FOUND` / `COMMIT_NOT_FOUND` / `REF_NOT_FOUND`      | Resource not found                                    |
 | `409`       | `ANALYSIS_ALREADY_RUNNING`                                                            | An analysis run is already in progress                |
 | `422`       | `NOT_A_GIT_REPOSITORY`                                                                | Path exists but does not contain a Git working tree   |
 | `500`       | `INTERNAL_SERVER_ERROR`                                                               | Unexpected internal server error (sanitized)          |

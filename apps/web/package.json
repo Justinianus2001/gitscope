@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@gitscope/shared": "workspace:*",
+    "@xyflow/react": "^12.12.0",
     "lucide-react": "^0.475.0",
     "next": "^15.2.1",
     "react": "^19.0.0",

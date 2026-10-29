@@ -128,10 +128,17 @@ export const getFileHistoryResponseSchema = z.object({
 });
 export type GetFileHistoryResponse = z.infer<typeof getFileHistoryResponseSchema>;
 
+export const getGraphQuerySchema = z.object({
+  ref: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(1000).default(300),
+});
+export type GetGraphQuery = z.infer<typeof getGraphQuerySchema>;
+
 export const graphNodeSchema = z.object({
   hash: z.string(),
   subject: z.string(),
   authorTime: z.string(),
+  authorName: z.string().optional(),
   parentHashes: z.array(z.string()),
   refs: z.array(z.string()),
 });
@@ -140,6 +147,21 @@ export type GraphNode = z.infer<typeof graphNodeSchema>;
 export const getGraphResponseSchema = z.object({
   data: z.object({
     nodes: z.array(graphNodeSchema),
+    truncated: z.boolean(),
+    ref: z.string().nullable(),
   }),
 });
 export type GetGraphResponse = z.infer<typeof getGraphResponseSchema>;
+
+export const refItemSchema = z.object({
+  name: z.string(),
+  refType: z.enum(['branch', 'tag']),
+  targetHash: z.string(),
+  isRemote: z.boolean(),
+});
+export type RefItem = z.infer<typeof refItemSchema>;
+
+export const getRefsResponseSchema = z.object({
+  data: z.array(refItemSchema),
+});
+export type GetRefsResponse = z.infer<typeof getRefsResponseSchema>;
