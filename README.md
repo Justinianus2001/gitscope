@@ -70,8 +70,9 @@ gitscope/
 ├── docs/
 │   ├── implementation-plan.md  # Detailed progress, milestones, status & next steps
 │   ├── architecture.md         # Component and data flow documentation
+│   ├── security.md             # Threat model, security boundaries & hardening
 │   ├── metrics.md              # Mathematical definitions of repository metrics
-│   └── benchmark.md            # Benchmark methodology and results
+│   └── benchmark.md            # Benchmark methodology, query plans & scale results
 ├── pnpm-workspace.yaml
 ├── package.json
 └── README.md
@@ -195,6 +196,9 @@ All endpoints return JSON responses. Errors follow a consistent structure:
 - **Path allowlisting**: Strict enforcement of `ALLOWED_REPOSITORY_ROOTS`. Paths are resolved with `fs.realpathSync` to defeat symlink escapes and traversal before any Git operations.
 - **Safe process invocation**: Git CLI commands execute via argument arrays without shell interpolation. Execution timeouts and max buffer caps are enforced.
 - **Data persistence**: Stored locally in a single SQLite database (`better-sqlite3`) with foreign key constraints enabled.
+
+For full architectural details, see [docs/architecture.md](docs/architecture.md) and [docs/security.md](docs/security.md).
+For metrics definitions and benchmark performance, see [docs/metrics.md](docs/metrics.md) and [docs/benchmark.md](docs/benchmark.md).
 
 ---
 

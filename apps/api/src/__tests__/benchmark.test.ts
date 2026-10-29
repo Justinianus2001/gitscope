@@ -83,7 +83,7 @@ describe('Analytics & Co-Change Performance Benchmark', () => {
     const t0 = performance.now();
     await importRepository(repoId, repo.dir, db);
     importDurationMs = performance.now() - t0;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await app.close();

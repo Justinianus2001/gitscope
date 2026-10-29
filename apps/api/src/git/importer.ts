@@ -167,10 +167,11 @@ export async function importRepository(
     const finishTime = new Date().toISOString();
 
     const persistTx = db.transaction(() => {
-      // Clear old refs and file changes for complete re-indexing idempotency
+      // Clear old refs, file changes, parents, and commits for complete re-indexing idempotency
       db.prepare('DELETE FROM refs WHERE repo_id = ?').run(repoId);
       db.prepare('DELETE FROM file_changes WHERE repo_id = ?').run(repoId);
       db.prepare('DELETE FROM commit_parents WHERE repo_id = ?').run(repoId);
+      db.prepare('DELETE FROM commits WHERE repo_id = ?').run(repoId);
 
       // Prepared statements for batch inserts
       const insertRefStmt = db.prepare(`
@@ -272,8 +273,13 @@ export async function importRepository(
         ? error.code
         : error instanceof ImporterError
           ? error.code
-          : 'IMPORT_FAILED';
-    const errorMessage = error instanceof Error ? error.message : 'Unknown import error.';
+          : (error as { name?: string }).name === 'SqliteError'
+            ? 'DATABASE_ERROR'
+            : 'IMPORT_FAILED';
+    let errorMessage = error instanceof Error ? error.message : 'Unknown import error.';
+    if (canonicalPath) {
+      errorMessage = errorMessage.replaceAll(canonicalPath, '[repo_root]');
+    }
 
     // Update analysis run record with failure status outside the failed transaction
     db.prepare(
