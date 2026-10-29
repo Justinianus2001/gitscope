@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# SQLite databases & temp storage
+data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.db
+
+# Environment variables
+.env
+.env*.local
+!.env.example
+
+# Logs & temp
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.temp/
+tmp/
+coverage/
+
+# OS metadata
+.DS_Store
+Thumbs.db
