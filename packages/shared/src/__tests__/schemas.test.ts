@@ -5,6 +5,12 @@ import {
   changeTypeSchema,
   getGraphQuerySchema,
   getGraphResponseSchema,
+  getActivityQuerySchema,
+  getActivityResponseSchema,
+  getHotspotsQuerySchema,
+  getHotspotsResponseSchema,
+  getCoChangesQuerySchema,
+  getCoChangesResponseSchema,
 } from '../index.js';
 
 describe('Shared Schemas', () => {
@@ -70,5 +76,76 @@ describe('Shared Schemas', () => {
       },
     };
     expect(getGraphResponseSchema.safeParse(validGraphResponse).success).toBe(true);
+  });
+
+  it('validates analytics query defaults and response schemas', () => {
+    // Activity
+    const actQuery = getActivityQuerySchema.parse({});
+    expect(actQuery.interval).toBe('day');
+    expect(actQuery.from).toBeUndefined();
+
+    const actResp = {
+      data: {
+        buckets: [
+          {
+            bucket: '2026-10-29',
+            date: '2026-10-29T00:00:00.000Z',
+            commitCount: 5,
+            distinctContributors: 2,
+          },
+        ],
+        interval: 'day',
+        totalCommits: 5,
+        totalContributors: 2,
+        contributors: [
+          {
+            name: 'Alice',
+            email: 'alice@example.com',
+            commitCount: 5,
+            firstCommitAt: '2026-10-29T10:00:00.000Z',
+            lastCommitAt: '2026-10-29T12:00:00.000Z',
+          },
+        ],
+        from: '2026-10-29T00:00:00.000Z',
+        to: '2026-10-29T23:59:59.999Z',
+      },
+    };
+    expect(getActivityResponseSchema.safeParse(actResp).success).toBe(true);
+
+    // Hotspots
+    const hotQuery = getHotspotsQuerySchema.parse({});
+    expect(hotQuery.limit).toBe(50);
+    const hotResp = {
+      data: [
+        {
+          path: 'src/index.ts',
+          distinctCommits: 12,
+          totalAdditions: 150,
+          totalDeletions: 25,
+          lastChangedAt: '2026-10-29T12:00:00.000Z',
+        },
+      ],
+    };
+    expect(getHotspotsResponseSchema.safeParse(hotResp).success).toBe(true);
+
+    // Co-changes
+    const coQuery = getCoChangesQuerySchema.parse({});
+    expect(coQuery.minCount).toBe(2);
+    expect(coQuery.limit).toBe(50);
+    const coResp = {
+      data: {
+        pairs: [
+          {
+            pathA: 'src/a.ts',
+            pathB: 'src/b.ts',
+            coChangeCount: 4,
+            lastCoChangeAt: '2026-10-29T12:00:00.000Z',
+          },
+        ],
+        excludedLargeCommitsCount: 0,
+        safetyThreshold: 200,
+      },
+    };
+    expect(getCoChangesResponseSchema.safeParse(coResp).success).toBe(true);
   });
 });

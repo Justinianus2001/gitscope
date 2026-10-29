@@ -9,6 +9,13 @@ import type {
   GetGraphResponse,
   RefItem,
   GetRefsResponse,
+  GetActivityQuery,
+  GetActivityResponse,
+  GetHotspotsQuery,
+  GetHotspotsResponse,
+  HotspotItem,
+  GetCoChangesQuery,
+  GetCoChangesResponse,
 } from '@gitscope/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
@@ -134,6 +141,51 @@ export const api = {
 
   async getRefs(id: string): Promise<RefItem[]> {
     const res = await request<GetRefsResponse>(`/api/repositories/${id}/refs`);
+    return res.data;
+  },
+
+  async getActivity(
+    id: string,
+    query: Partial<GetActivityQuery> = {},
+  ): Promise<GetActivityResponse['data']> {
+    const params = new URLSearchParams();
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.interval) params.set('interval', query.interval);
+
+    const qs = params.toString();
+    const endpoint = `/api/repositories/${id}/activity${qs ? `?${qs}` : ''}`;
+    const res = await request<GetActivityResponse>(endpoint);
+    return res.data;
+  },
+
+  async getHotspots(id: string, query: Partial<GetHotspotsQuery> = {}): Promise<HotspotItem[]> {
+    const params = new URLSearchParams();
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.path) params.set('path', query.path);
+    if (query.limit) params.set('limit', String(query.limit));
+
+    const qs = params.toString();
+    const endpoint = `/api/repositories/${id}/hotspots${qs ? `?${qs}` : ''}`;
+    const res = await request<GetHotspotsResponse>(endpoint);
+    return res.data;
+  },
+
+  async getCoChanges(
+    id: string,
+    query: Partial<GetCoChangesQuery> = {},
+  ): Promise<GetCoChangesResponse['data']> {
+    const params = new URLSearchParams();
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.path) params.set('path', query.path);
+    if (query.minCount) params.set('minCount', String(query.minCount));
+    if (query.limit) params.set('limit', String(query.limit));
+
+    const qs = params.toString();
+    const endpoint = `/api/repositories/${id}/co-changes${qs ? `?${qs}` : ''}`;
+    const res = await request<GetCoChangesResponse>(endpoint);
     return res.data;
   },
 };

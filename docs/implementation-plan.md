@@ -1,7 +1,7 @@
 # GitScope Implementation Plan
 
 **Product:** GitScope  
-**Status:** In Progress (Milestones 0, 1, 2, 3, and 4 Completed)  
+**Status:** In Progress (Milestones 0, 1, 2, 3, 4, and 5 Completed)  
 **Last Updated:** 2026-10-29
 
 ---
@@ -112,19 +112,29 @@
   - [x] Accessible list view fallback allowing seamless toggling between interactive visual graph and tabular commit explorer.
 - [x] Total passing test suite across monorepo: 68 tests (100% pass rate).
 
-### Milestone 5: Analytics & Insights (Next)
+### Milestone 5: Analytics & Insights (Completed)
 
-- [ ] Commit activity aggregation (`GET /api/repositories/:id/activity`) with day/week buckets and zero-fill.
-- [ ] File hotspot calculations (`GET /api/repositories/:id/hotspots`).
-- [ ] Co-change pair mining (`GET /api/repositories/:id/co-changes`) with safety threshold.
-- [ ] Analytics dashboard UI with Recharts.
+- [x] Defined metric formulas, normalization rules, data coverage, and interpretive guidelines in `docs/metrics.md`.
+- [x] Production Analytics REST APIs (`apps/api/src/routes/analytics.ts`):
+  - [x] `GET /api/repositories/:id/activity`: contiguous zero-filled UTC buckets (`day`, `week`, `month`), commit count, distinct contributors with email normalization, range validation (`INVALID_DATE_RANGE`, `DATE_RANGE_TOO_LARGE`).
+  - [x] `GET /api/repositories/:id/hotspots`: ranked files by distinct commit count descending, additions/deletions (treating binary modifications as `NULL`), and last changed timestamp.
+  - [x] `GET /api/repositories/:id/co-changes`: mined file co-change pairs with canonical ordering (`pathA < pathB`), self-pair exclusion, minimum support count (`minCount`), and combinatorial safety ceiling (`COCHANGE_MAX_FILES_PER_COMMIT: 200`).
+  - [x] Complete integration test suite in `apps/api/src/__tests__/analytics.test.ts` (11 tests covering zero-filling, intervals, bounds, binary files, path traversal rejection, thresholds, and isolation).
+  - [x] Synthetic benchmark in `apps/api/src/__tests__/benchmark.test.ts` testing 250-file bulk commit safety exclusion and sub-4ms query latencies.
+- [x] Responsive Analytics Dashboard UI (`apps/web/src/app/repositories/[id]/analytics/page.tsx`):
+  - [x] Recharts interactive activity area chart with day/week/month aggregation and zero-filled time series.
+  - [x] Contributor overview ranking top authors, emails, and contribution percentages.
+  - [x] Ranked file hotspots table with churn statistics and path filtering.
+  - [x] Co-change coupling table with minCount support selector and large commit exclusion notice.
+  - [x] Navigation bar connecting Overview, Commit Explorer, Interactive Graph, and Analytics Dashboard.
+- [x] Total passing test suite across monorepo: 84 tests (100% pass rate).
 
-### Milestone 6: Reliability, Hardening & Release (Pending)
+### Milestone 6: Reliability, Hardening & Release (Next)
 
 - [ ] Incremental re-analysis & rewritten history handling.
 - [ ] End-to-end testing with Playwright.
-- [ ] Documentation (`docs/architecture.md`, `docs/metrics.md`, `docs/benchmark.md`, `README.md`).
-- [ ] Performance profiling and benchmark report.
+- [ ] Comprehensive documentation (`docs/architecture.md`, `docs/benchmark.md`, `README.md`).
+- [ ] Final production verification.
 
 ---
 
@@ -138,6 +148,6 @@
 
 ## 5. Next Steps
 
-1. Begin Milestone 5: implement analytics REST APIs (`activity`, `hotspots`, `co-changes`).
-2. Add metric definitions and calculation documentation in `docs/metrics.md`.
-3. Integrate Recharts in `apps/web` for commit activity charts, hotspot tables, and co-change association explorer.
+1. Begin Milestone 6: implement incremental re-indexing verification and Playwright e2e testing.
+2. Complete `docs/architecture.md` and `docs/benchmark.md`.
+3. Perform release hardening and packaging.

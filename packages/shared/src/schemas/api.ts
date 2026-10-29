@@ -165,3 +165,93 @@ export const getRefsResponseSchema = z.object({
   data: z.array(refItemSchema),
 });
 export type GetRefsResponse = z.infer<typeof getRefsResponseSchema>;
+
+// Analytics Schemas
+
+export const activityIntervalSchema = z.enum(['day', 'week', 'month']).default('day');
+export type ActivityInterval = z.infer<typeof activityIntervalSchema>;
+
+export const getActivityQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  interval: activityIntervalSchema,
+});
+export type GetActivityQuery = z.infer<typeof getActivityQuerySchema>;
+
+export const activityBucketSchema = z.object({
+  bucket: z.string(),
+  date: z.string(),
+  commitCount: z.number().int().nonnegative(),
+  distinctContributors: z.number().int().nonnegative(),
+});
+export type ActivityBucket = z.infer<typeof activityBucketSchema>;
+
+export const contributorSummarySchema = z.object({
+  name: z.string(),
+  email: z.string(),
+  commitCount: z.number().int().nonnegative(),
+  firstCommitAt: z.string(),
+  lastCommitAt: z.string(),
+});
+export type ContributorSummary = z.infer<typeof contributorSummarySchema>;
+
+export const getActivityResponseSchema = z.object({
+  data: z.object({
+    buckets: z.array(activityBucketSchema),
+    interval: activityIntervalSchema,
+    totalCommits: z.number().int().nonnegative(),
+    totalContributors: z.number().int().nonnegative(),
+    contributors: z.array(contributorSummarySchema),
+    from: z.string(),
+    to: z.string(),
+  }),
+});
+export type GetActivityResponse = z.infer<typeof getActivityResponseSchema>;
+
+export const getHotspotsQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  path: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(500).default(50),
+});
+export type GetHotspotsQuery = z.infer<typeof getHotspotsQuerySchema>;
+
+export const hotspotItemSchema = z.object({
+  path: z.string(),
+  distinctCommits: z.number().int().nonnegative(),
+  totalAdditions: z.number().int().nonnegative().nullable(),
+  totalDeletions: z.number().int().nonnegative().nullable(),
+  lastChangedAt: z.string().nullable(),
+});
+export type HotspotItem = z.infer<typeof hotspotItemSchema>;
+
+export const getHotspotsResponseSchema = z.object({
+  data: z.array(hotspotItemSchema),
+});
+export type GetHotspotsResponse = z.infer<typeof getHotspotsResponseSchema>;
+
+export const getCoChangesQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  path: z.string().optional(),
+  minCount: z.coerce.number().int().positive().default(2),
+  limit: z.coerce.number().int().positive().max(500).default(50),
+});
+export type GetCoChangesQuery = z.infer<typeof getCoChangesQuerySchema>;
+
+export const coChangePairSchema = z.object({
+  pathA: z.string(),
+  pathB: z.string(),
+  coChangeCount: z.number().int().positive(),
+  lastCoChangeAt: z.string().optional(),
+});
+export type CoChangePair = z.infer<typeof coChangePairSchema>;
+
+export const getCoChangesResponseSchema = z.object({
+  data: z.object({
+    pairs: z.array(coChangePairSchema),
+    excludedLargeCommitsCount: z.number().int().nonnegative(),
+    safetyThreshold: z.number().int().positive(),
+  }),
+});
+export type GetCoChangesResponse = z.infer<typeof getCoChangesResponseSchema>;

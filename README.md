@@ -166,16 +166,26 @@ All endpoints return JSON responses. Errors follow a consistent structure:
 - `GET /api/repositories/:id/refs`:
   - Returns all branch and tag references for the repository.
 
+### 5. Repository Analytics & Insights
+
+- `GET /api/repositories/:id/activity?from=...&to=...&interval=day|week|month`:
+  - Returns contiguous zero-filled UTC time buckets (`commitCount`, `distinctContributors`), total commit counts, and ranked contributor summaries with normalized email identities.
+- `GET /api/repositories/:id/hotspots?from=...&to=...&path=...&limit=50`:
+  - Returns file paths ranked by distinct modifying commits, total known line additions/deletions (treating binary modifications as `NULL`/unknown), and last modified timestamp.
+- `GET /api/repositories/:id/co-changes?from=...&to=...&path=...&minCount=2&limit=50`:
+  - Mines file pairs frequently modified in the same commit with canonical ordering (`pathA < pathB`).
+  - Enforces combinatorial safety threshold: commits touching more than `COCHANGE_MAX_FILES_PER_COMMIT` (default: 200) files are excluded from quadratic pairing, reported in `excludedLargeCommitsCount`.
+
 ### Standard Error Codes
 
-| HTTP Status | Error Code                                                                            | Description                                           |
-| ----------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `400`       | `INVALID_REQUEST` / `INVALID_ID` / `INVALID_HASH` / `INVALID_PATH` / `INVALID_CURSOR` | Request validation error                              |
-| `403`       | `PATH_NOT_ALLOWED`                                                                    | Path is outside configured `ALLOWED_REPOSITORY_ROOTS` |
-| `404`       | `PATH_NOT_FOUND` / `REPOSITORY_NOT_FOUND` / `COMMIT_NOT_FOUND` / `REF_NOT_FOUND`      | Resource not found                                    |
-| `409`       | `ANALYSIS_ALREADY_RUNNING`                                                            | An analysis run is already in progress                |
-| `422`       | `NOT_A_GIT_REPOSITORY`                                                                | Path exists but does not contain a Git working tree   |
-| `500`       | `INTERNAL_SERVER_ERROR`                                                               | Unexpected internal server error (sanitized)          |
+| HTTP Status | Error Code                                                                                                                            | Description                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `400`       | `INVALID_REQUEST` / `INVALID_ID` / `INVALID_HASH` / `INVALID_PATH` / `INVALID_CURSOR` / `INVALID_DATE_RANGE` / `DATE_RANGE_TOO_LARGE` | Request validation error                              |
+| `403`       | `PATH_NOT_ALLOWED`                                                                                                                    | Path is outside configured `ALLOWED_REPOSITORY_ROOTS` |
+| `404`       | `PATH_NOT_FOUND` / `REPOSITORY_NOT_FOUND` / `COMMIT_NOT_FOUND` / `REF_NOT_FOUND`                                                      | Resource not found                                    |
+| `409`       | `ANALYSIS_ALREADY_RUNNING`                                                                                                            | An analysis run is already in progress                |
+| `422`       | `NOT_A_GIT_REPOSITORY`                                                                                                                | Path exists but does not contain a Git working tree   |
+| `500`       | `INTERNAL_SERVER_ERROR`                                                                                                               | Unexpected internal server error (sanitized)          |
 
 ---
 

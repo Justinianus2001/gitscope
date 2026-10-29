@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
 import { CommitGraph } from '@/components/graph/commit-graph';
 
@@ -253,6 +254,14 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
           <List className="h-4 w-4" />
           <span>Commit Explorer</span>
         </button>
+
+        <Link
+          href={`/repositories/${repoId}/analytics`}
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-all ml-auto"
+        >
+          <TrendingUp className="h-4 w-4 text-emerald-400" />
+          <span>Analytics Dashboard</span>
+        </Link>
       </div>
 
       {activeView === 'graph' ? (

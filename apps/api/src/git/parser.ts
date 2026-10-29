@@ -226,6 +226,19 @@ function parseCommitDiff(diffBuffer: string): ParsedFileChange[] {
   return results;
 }
 
+function toUtcIso(isoStr: string): string {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+    return isoStr;
+  } catch {
+    return isoStr;
+  }
+}
+
 /**
  * Parses Git log output with structured record and field separators into ParsedCommit array.
  */
@@ -254,10 +267,10 @@ export function parseGitLog(rawOutput: string): ParsedCommit[] {
     const parentHashesStr = fields[1]?.trim() ?? '';
     const authorName = fields[2] ?? '';
     const authorEmail = fields[3] ?? '';
-    const authorTime = fields[4]?.trim() ?? '';
+    const authorTime = toUtcIso(fields[4]?.trim() ?? '');
     const committerName = fields[5] ?? '';
     const committerEmail = fields[6] ?? '';
-    const committerTime = fields[7]?.trim() ?? '';
+    const committerTime = toUtcIso(fields[7]?.trim() ?? '');
     const subject = fields[8] ?? '';
     const bodyRaw = fields[9] ?? '';
 
