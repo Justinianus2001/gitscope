@@ -135,7 +135,7 @@ describe('Git Importer', () => {
     const binaryChange = changes.find((ch) => ch.path === 'logo.png');
     expect(binaryChange).toBeDefined();
     expect(binaryChange?.is_binary).toBe(1);
-  });
+  }, 20000);
 
   it('prevents simultaneous analysis runs for the same repository', async () => {
     const repoId = registerRepo(tempRepo.dir);

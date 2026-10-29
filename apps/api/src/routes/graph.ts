@@ -201,14 +201,16 @@ export const graphRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     // Ancestry query bounded by limit + 1
+    // Use CROSS JOIN with ancestry as the driving table to force SQLite to use the
+    // primary key index on commit_parents (repo_id, commit_hash) rather than scanning
+    // all commit_parents rows in the repository at each recursive step.
     const ancestrySql = `
         WITH RECURSIVE ancestry(h) AS (
           SELECT ?
           UNION
           SELECT cp.parent_hash
-          FROM commit_parents cp
-          JOIN ancestry a ON cp.commit_hash = a.h
-          WHERE cp.repo_id = ?
+          FROM ancestry a
+          CROSS JOIN commit_parents cp ON cp.repo_id = ? AND cp.commit_hash = a.h
         )
         SELECT c.hash, c.author_name, c.author_time, c.subject
         FROM commits c

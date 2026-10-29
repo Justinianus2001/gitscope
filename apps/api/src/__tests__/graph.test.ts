@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { buildApp } from '../app.js';
 import { createDb } from '../db/client.js';
 import { createTempGitRepo, type TestGitRepo } from './git/fixture-helper.js';
@@ -250,5 +251,114 @@ describe('Graph API (GET /api/repositories/:id/graph and /refs)', () => {
     expect(refNames).toContain('feature');
     expect(refNames).toContain('v0.1.0');
     expect(refNames).toContain('v1.0.0');
+  });
+
+  it('supports lookup by commit hash directly (full hash and 7-char short hash)', async () => {
+    // Lookup by full 40-char hash
+    const fullRes = await app.inject({
+      method: 'GET',
+      url: `/api/repositories/${repoId}/graph?ref=${commit2Hash}`,
+    });
+    expect(fullRes.statusCode).toBe(200);
+    const fullNodes = fullRes.json().data.nodes;
+    expect(fullNodes.map((n: { hash: string }) => n.hash)).toContain(commit2Hash);
+    expect(fullRes.json().data.ref).toBe(commit2Hash.slice(0, 7));
+
+    // Lookup by 7-char abbreviated hash
+    const shortHash = commit2Hash.slice(0, 7);
+    const shortRes = await app.inject({
+      method: 'GET',
+      url: `/api/repositories/${repoId}/graph?ref=${shortHash}`,
+    });
+    expect(shortRes.statusCode).toBe(200);
+    const shortNodes = shortRes.json().data.nodes;
+    expect(shortNodes.map((n: { hash: string }) => n.hash)).toContain(commit2Hash);
+    expect(shortRes.json().data.ref).toBe(shortHash);
+  });
+
+  describe('Deep Scale Regression & Correctness (1,000 Commits)', () => {
+    let scaleRepo: TestGitRepo;
+    let scaleRepoId: string;
+
+    beforeAll(async () => {
+      scaleRepo = createTempGitRepo('gitscope-graph-scale-');
+      // Create 1,000 commits programmatically with distinct timestamps
+      const baseTs = 1700000000;
+      let stream = '';
+      for (let i = 1; i <= 1000; i++) {
+        const ts = baseTs + i * 60;
+        const msg = `Scale graph commit ${i}\n`;
+        const data = `export const v = ${i};\n`;
+        stream += 'commit refs/heads/main\n';
+        stream += `committer Dev <dev@test.com> ${ts} +0000\n`;
+        stream += `data ${Buffer.byteLength(msg)}\n${msg}`;
+        stream += `M 644 inline src/app.ts\n`;
+        stream += `data ${Buffer.byteLength(data)}\n${data}`;
+      }
+      const res = spawnSync('git', ['fast-import', '--quiet'], {
+        cwd: scaleRepo.dir,
+        input: stream,
+      });
+      if (res.status !== 0) throw new Error('fast-import failed');
+      spawnSync('git', ['checkout', '-f', 'main'], { cwd: scaleRepo.dir });
+
+      const reg = await app.inject({
+        method: 'POST',
+        url: '/api/repositories',
+        payload: { path: scaleRepo.dir },
+      });
+      scaleRepoId = reg.json().data.id;
+      await importRepository(scaleRepoId, scaleRepo.dir, app.db);
+    });
+
+    afterAll(() => {
+      scaleRepo?.cleanup();
+    });
+
+    it('retrieves bounded graph on 1,000 commits with strict topological order and correct parent links', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/repositories/${scaleRepoId}/graph?limit=300`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.data.truncated).toBe(true);
+      expect(body.data.nodes.length).toBe(300);
+
+      // Verify strict descending author time order
+      const nodes = body.data.nodes;
+      for (let i = 0; i < nodes.length - 1; i++) {
+        expect(new Date(nodes[i].authorTime).getTime()).toBeGreaterThanOrEqual(
+          new Date(nodes[i + 1].authorTime).getTime(),
+        );
+        // In a linear history, node i should have node i+1 as its parent
+        expect(nodes[i].parentHashes[0]).toBe(nodes[i + 1].hash);
+      }
+
+      // Boundary node (300th node) must retain its parent hash pointing to 301st commit outside window
+      expect(nodes[299].parentHashes.length).toBe(1);
+      expect(nodes[299].parentHashes[0]).toBeDefined();
+    });
+
+    it('preserves boundary node parent references when graph is truncated to small limits', async () => {
+      // Request limit=5 on scaleRepo where order is strictly chronological
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/repositories/${scaleRepoId}/graph?limit=5`,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.data.truncated).toBe(true);
+      expect(body.data.nodes.length).toBe(5);
+
+      const nodes = body.data.nodes;
+      // All nodes 0..4 have exactly 1 parent
+      for (const n of nodes) {
+        expect(n.parentHashes.length).toBe(1);
+      }
+      // Boundary 5th node points to the 6th commit (which is truncated)
+      expect(nodes[4].parentHashes[0]).toBeDefined();
+    });
   });
 });
