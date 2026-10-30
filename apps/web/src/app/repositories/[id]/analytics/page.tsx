@@ -211,16 +211,16 @@ export default function AnalyticsDashboardPage({ params }: { params: Promise<{ i
         </div>
 
         {/* View Switcher Navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/repositories/${repoId}`}
+            href={`/repositories/${repoId}?view=graph`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-700 transition"
           >
             <GitGraph className="h-3.5 w-3.5 text-blue-400" />
             <span>Interactive Graph</span>
           </Link>
           <Link
-            href={`/repositories/${repoId}`}
+            href={`/repositories/${repoId}?view=commits`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-700 transition"
           >
             <List className="h-3.5 w-3.5 text-neutral-400" />
@@ -423,15 +423,15 @@ export default function AnalyticsDashboardPage({ params }: { params: Promise<{ i
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
                 <XAxis
                   dataKey="bucket"
-                  stroke="#71717a"
+                  stroke="#737373"
                   fontSize={11}
                   tickLine={false}
                   interval="preserveStartEnd"
                 />
-                <YAxis stroke="#71717a" fontSize={11} tickLine={false} allowDecimals={false} />
+                <YAxis stroke="#737373" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {

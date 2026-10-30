@@ -169,22 +169,22 @@ export function CommitGraph({
   );
 
   return (
-    <div className="flex flex-col h-[750px] w-full rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px] w-full rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden shadow-2xl">
       {/* Graph Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-4 py-3 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-neutral-100">
             <GitCommit className="h-4 w-4 text-blue-400" />
             <span>Interactive Ancestry Graph</span>
           </div>
 
           {/* Ref (Branch/Tag) Selector */}
-          <div className="flex items-center gap-1.5 pl-3 border-l border-zinc-800 text-xs">
-            <GitBranch className="h-3.5 w-3.5 text-zinc-400" />
+          <div className="flex items-center gap-1.5 sm:border-l sm:border-neutral-800 sm:pl-3 text-xs">
+            <GitBranch className="h-3.5 w-3.5 text-neutral-400" />
             <select
               value={selectedRef}
               onChange={(e) => setSelectedRef(e.target.value)}
-              className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="rounded-md border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Default Branch ({defaultBranch || 'HEAD'})</option>
               {refs.map((ref) => (
@@ -202,7 +202,7 @@ export function CommitGraph({
           <button
             onClick={() => loadGraph()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition disabled:opacity-50"
             title="Reload graph"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
@@ -213,7 +213,7 @@ export function CommitGraph({
           {onSwitchToListView && (
             <button
               onClick={onSwitchToListView}
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition"
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition"
               title="Switch to accessible tabular commit explorer"
             >
               <List className="h-3 w-3" />
@@ -235,19 +235,19 @@ export function CommitGraph({
       )}
 
       {/* Canvas Area */}
-      <div className="relative flex-1 w-full h-full bg-zinc-950">
+      <div className="relative flex-1 w-full h-full bg-neutral-950">
         {loading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/70 backdrop-blur-xs">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-neutral-950/70 backdrop-blur-xs">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-            <span className="text-sm text-zinc-400 font-medium">Computing graph layout...</span>
+            <span className="text-sm text-neutral-400 font-medium">Computing graph layout...</span>
           </div>
         )}
 
         {error && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
             <AlertTriangle className="h-10 w-10 text-rose-500 mb-2" />
-            <h3 className="text-sm font-semibold text-zinc-100">Unable to load graph</h3>
-            <p className="mt-1 text-xs text-zinc-400 max-w-sm">{error}</p>
+            <h3 className="text-sm font-semibold text-neutral-100">Unable to load graph</h3>
+            <p className="mt-1 text-xs text-neutral-400 max-w-sm">{error}</p>
             <button
               onClick={() => loadGraph()}
               className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 transition"
@@ -260,9 +260,9 @@ export function CommitGraph({
 
         {!loading && !error && rawNodes.length === 0 && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
-            <Info className="h-10 w-10 text-zinc-600 mb-2" />
-            <h3 className="text-sm font-semibold text-zinc-200">No commits found</h3>
-            <p className="mt-1 text-xs text-zinc-500 max-w-sm">
+            <Info className="h-10 w-10 text-neutral-600 mb-2" />
+            <h3 className="text-sm font-semibold text-neutral-200">No commits found</h3>
+            <p className="mt-1 text-xs text-neutral-500 max-w-sm">
               The selected ref does not contain any indexed commits yet. Trigger an analysis if this
               is a new repository.
             </p>
@@ -284,32 +284,32 @@ export function CommitGraph({
           proOptions={{ hideAttribution: true }}
           className="gitscope-react-flow"
         >
-          <Background color="#27272a" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
+          <Background color="#262626" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
           <Controls
-            className="!bg-zinc-900 !border-zinc-800 !fill-zinc-300 [&>button]:!border-zinc-800 [&>button]:!bg-zinc-900 [&>button:hover]:!bg-zinc-800"
+            className="!bg-neutral-900 !border-neutral-800 !fill-neutral-300 [&>button]:!border-neutral-800 [&>button]:!bg-neutral-900 [&>button:hover]:!bg-neutral-800"
             showInteractive={false}
           />
           <MiniMap
-            className="!bg-zinc-900/90 !border-zinc-800 !rounded-lg overflow-hidden"
+            className="!bg-neutral-900/90 !border-neutral-800 !rounded-lg overflow-hidden"
             nodeColor={(n) => {
               const lane = (n.data as { lane?: number })?.lane ?? 0;
               const colors = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#f43f5e', '#06b6d4'];
               return colors[lane % colors.length] ?? '#3b82f6';
             }}
-            maskColor="rgba(9, 9, 11, 0.7)"
+            maskColor="rgba(10, 10, 10, 0.7)"
           />
         </ReactFlow>
       </div>
 
       {/* Footer Instructions */}
-      <div className="flex items-center justify-between border-t border-zinc-800/80 bg-zinc-900/50 px-4 py-2 text-[11px] text-zinc-400">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-neutral-800/80 bg-neutral-900/50 px-4 py-2 text-[11px] text-neutral-400">
         <div className="flex items-center gap-2">
           <span>Click any commit node to inspect changes, diff statistics, and file history.</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <span>Nodes: {rawNodes.length}</span>
-          <span>Pan: Click & Drag</span>
-          <span>Zoom: Scroll wheel</span>
+          <span>Pan: Drag</span>
+          <span>Zoom: Scroll</span>
         </div>
       </div>
     </div>

@@ -48,7 +48,7 @@ export const CommitNode = React.memo(function CommitNode({ data, selected }: Com
 
   return (
     <div
-      className={`group relative min-w-[260px] max-w-[320px] rounded-lg border bg-zinc-900/95 p-3 shadow-md backdrop-blur-sm transition-all duration-150 cursor-pointer ${
+      className={`group relative min-w-[260px] max-w-[320px] rounded-lg border bg-neutral-900/95 p-3 shadow-md backdrop-blur-sm transition-all duration-150 cursor-pointer ${
         selected ? 'ring-2 ring-blue-500 border-blue-400 shadow-lg' : borderColor
       }`}
       title={`${data.hash}\n${data.subject}`}
@@ -57,14 +57,14 @@ export const CommitNode = React.memo(function CommitNode({ data, selected }: Com
       <Handle
         type="target"
         position={Position.Top}
-        className="!h-2 !w-2 !rounded-full !bg-zinc-400 !border-zinc-800"
+        className="!h-2 !w-2 !rounded-full !bg-neutral-400 !border-neutral-800"
       />
 
       {/* Header: lane dot, abbreviated hash, merge indicator, date */}
       <div className="flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5 font-mono text-zinc-300">
+        <div className="flex items-center gap-1.5 font-mono text-neutral-300">
           <span className={`h-2.5 w-2.5 rounded-full shadow-sm ${dotColor}`} />
-          <span className="font-semibold text-zinc-200">{data.abbreviatedHash}</span>
+          <span className="font-semibold text-neutral-200">{data.abbreviatedHash}</span>
           {data.isMerge && (
             <span className="inline-flex items-center gap-0.5 rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300 border border-purple-500/40">
               <GitMerge className="h-3 w-3" />
@@ -72,18 +72,18 @@ export const CommitNode = React.memo(function CommitNode({ data, selected }: Com
             </span>
           )}
         </div>
-        <span className="text-[11px] text-zinc-500">{formattedDate}</span>
+        <span className="text-[11px] text-neutral-500">{formattedDate}</span>
       </div>
 
       {/* Subject */}
-      <div className="mt-1.5 text-xs font-medium text-zinc-200 line-clamp-2 leading-relaxed">
+      <div className="mt-1.5 text-xs font-medium text-neutral-200 line-clamp-2 leading-relaxed">
         {data.subject}
       </div>
 
       {/* Author and Refs */}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {data.authorName && (
-          <span className="text-[11px] text-zinc-400 truncate max-w-[120px]">
+          <span className="text-[11px] text-neutral-400 truncate max-w-[120px]">
             {data.authorName}
           </span>
         )}
@@ -115,7 +115,7 @@ export const CommitNode = React.memo(function CommitNode({ data, selected }: Com
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-2 !w-2 !rounded-full !bg-zinc-400 !border-zinc-800"
+        className="!h-2 !w-2 !rounded-full !bg-neutral-400 !border-neutral-800"
       />
     </div>
   );
