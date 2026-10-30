@@ -10,7 +10,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "dev:api": "pnpm --filter @gitscope/api dev",
-    "dev:web": "pnpm --filter @gitscope/web dev"
+    "dev:web": "pnpm --filter @gitscope/web dev",
+    "demo:setup": "node scripts/setup-demo-repo.js"
   },
   "devDependencies": {
     "prettier": "^3.5.2",
