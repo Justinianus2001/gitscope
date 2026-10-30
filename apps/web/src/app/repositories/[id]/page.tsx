@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, use } from 'react';
 import Link from 'next/link';
-import { api, ApiError } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
 import type {
   RepositoryListItem,
   CommitItem,
@@ -17,26 +18,22 @@ import {
   GitMerge,
   GitGraph,
   List,
-  Search,
-  Calendar,
-  FileCode,
   Tag,
   X,
-  Plus,
-  Minus,
-  FileDiff,
   Loader2,
   AlertTriangle,
-  CheckCircle2,
   ChevronRight,
   TrendingUp,
 } from 'lucide-react';
 import { CommitGraph } from '@/components/graph/commit-graph';
+import { InlineNotification } from '@/components/ui/inline-notification';
 
-export default function RepositoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: repoId } = use(params);
+function RepositoryDetailContent({ repoId }: { repoId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const activeView: 'graph' | 'commits' = viewParam === 'commits' ? 'commits' : 'graph';
 
-  const [activeView, setActiveView] = useState<'graph' | 'commits'>('graph');
   const [repo, setRepo] = useState<RepositoryListItem | null>(null);
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -44,9 +41,10 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Analysis status polling
+  // Analysis status polling & notification
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<number>(0);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Filter state
   const [authorFilter, setAuthorFilter] = useState('');
@@ -54,11 +52,30 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
   const [fromFilter, setFromFilter] = useState('');
   const [toFilter, setToFilter] = useState('');
 
-  // Commit Detail Modal state
+  // Commit Detail Drawer state
   const [selectedCommitHash, setSelectedCommitHash] = useState<string | null>(null);
   const [commitDetail, setCommitDetail] = useState<CommitDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  // Accessibility refs for drawer focus restoration
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+  const drawerPanelRef = useRef<HTMLDivElement | null>(null);
+  const drawerCloseBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // View navigation with browser history support
+  const handleViewChange = useCallback(
+    (view: 'graph' | 'commits') => {
+      const current = new URLSearchParams(searchParams.toString());
+      if (view === 'commits') {
+        current.set('view', 'commits');
+      } else {
+        current.set('view', 'graph');
+      }
+      router.push(`?${current.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   // Fetch repository metadata
   const loadRepo = useCallback(async () => {
@@ -140,28 +157,98 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
   // Trigger analysis
   async function handleTriggerAnalysis() {
     setIsAnalyzing(true);
+    setAnalysisError(null);
     try {
       await api.analyzeRepository(repoId);
     } catch (err) {
       setIsAnalyzing(false);
-      alert(err instanceof Error ? err.message : 'Failed to start analysis.');
+      setAnalysisError(err instanceof Error ? err.message : 'Failed to start analysis.');
     }
   }
 
-  // Open Commit Detail
-  async function handleSelectCommit(hash: string) {
-    setSelectedCommitHash(hash);
-    setDetailLoading(true);
+  // Open Commit Detail Drawer
+  const handleSelectCommit = useCallback(
+    async (hash: string, e?: React.SyntheticEvent) => {
+      if (e?.currentTarget instanceof HTMLElement) {
+        triggerElementRef.current = e.currentTarget;
+      } else if (document.activeElement instanceof HTMLElement) {
+        triggerElementRef.current = document.activeElement;
+      }
+
+      setSelectedCommitHash(hash);
+      setDetailLoading(true);
+      setDetailError(null);
+      try {
+        const data = await api.getCommitDetail(repoId, hash);
+        setCommitDetail(data);
+      } catch (err) {
+        setDetailError(err instanceof Error ? err.message : 'Failed to fetch commit details.');
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [repoId],
+  );
+
+  // Close Commit Detail Drawer and restore focus
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedCommitHash(null);
+    setCommitDetail(null);
     setDetailError(null);
-    try {
-      const data = await api.getCommitDetail(repoId, hash);
-      setCommitDetail(data);
-    } catch (err) {
-      setDetailError(err instanceof Error ? err.message : 'Failed to fetch commit details.');
-    } finally {
-      setDetailLoading(false);
-    }
-  }
+    requestAnimationFrame(() => {
+      triggerElementRef.current?.focus();
+    });
+  }, []);
+
+  // Keyboard dismissal (Escape key) and focus trapping for drawer
+  useEffect(() => {
+    if (!selectedCommitHash) return;
+
+    // Focus close button on mount
+    requestAnimationFrame(() => {
+      drawerCloseBtnRef.current?.focus();
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCloseDrawer();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        if (!drawerPanelRef.current) return;
+        const focusableElements = drawerPanelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+
+        if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab: wrap from first to last
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          // Tab: wrap from last to first
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCommitHash, handleCloseDrawer]);
 
   function handleClearFilters() {
     setAuthorFilter('');
@@ -182,6 +269,16 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
           <span>Back to Repositories</span>
         </Link>
       </div>
+
+      {/* Analysis Error Notification */}
+      {analysisError && (
+        <InlineNotification
+          type="error"
+          title="Analysis Failed"
+          message={analysisError}
+          onDismiss={() => setAnalysisError(null)}
+        />
+      )}
 
       {/* Repository Header */}
       {repo && (
@@ -230,9 +327,10 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* View Switcher Tabs */}
-      <div className="flex items-center gap-2 border-b border-neutral-800 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-800 pb-3">
         <button
-          onClick={() => setActiveView('graph')}
+          type="button"
+          onClick={() => handleViewChange('graph')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
             activeView === 'graph'
               ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
@@ -244,7 +342,8 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
         </button>
 
         <button
-          onClick={() => setActiveView('commits')}
+          type="button"
+          onClick={() => handleViewChange('commits')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
             activeView === 'commits'
               ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
@@ -257,7 +356,7 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
 
         <Link
           href={`/repositories/${repoId}/analytics`}
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-all ml-auto"
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-all sm:ml-auto"
         >
           <TrendingUp className="h-4 w-4 text-emerald-400" />
           <span>Analytics Dashboard</span>
@@ -269,7 +368,7 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
           repoId={repoId}
           defaultBranch={repo?.defaultBranch}
           onSelectCommit={handleSelectCommit}
-          onSwitchToListView={() => setActiveView('commits')}
+          onSwitchToListView={() => handleViewChange('commits')}
         />
       ) : (
         <>
@@ -373,15 +472,17 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-neutral-800">
+              <div className="divide-y divide-neutral-800" role="list">
                 {commits.map((commit) => {
                   const isMerge = commit.parentCount > 1;
 
                   return (
-                    <div
+                    <button
                       key={commit.hash}
-                      onClick={() => handleSelectCommit(commit.hash)}
-                      className="flex items-center justify-between gap-4 p-4 hover:bg-neutral-800/40 cursor-pointer transition-colors"
+                      type="button"
+                      onClick={(e) => handleSelectCommit(commit.hash, e)}
+                      aria-label={`Inspect commit ${commit.abbreviatedHash}: ${commit.subject}`}
+                      className="w-full text-left flex items-center justify-between gap-4 p-4 hover:bg-neutral-800/40 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <span className="mt-0.5 shrink-0 rounded bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300">
@@ -419,7 +520,7 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
                       </div>
 
                       <ChevronRight className="h-4 w-4 shrink-0 text-neutral-600" />
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -429,6 +530,7 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
             {nextCursor && !loading && (
               <div className="border-t border-neutral-800 p-4 text-center">
                 <button
+                  type="button"
                   onClick={() => loadCommits(false, nextCursor)}
                   disabled={loadingMore}
                   className="rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 transition-colors"
@@ -443,13 +545,28 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
 
       {/* Commit Detail Drawer */}
       {selectedCommitHash && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm">
-          <div className="h-full w-full max-w-xl border-l border-neutral-800 bg-neutral-900 p-6 shadow-xl overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm"
+          onClick={handleCloseDrawer}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="commit-details-title"
+        >
+          <div
+            ref={drawerPanelRef}
+            className="h-full w-full max-w-xl border-l border-neutral-800 bg-neutral-900 p-6 shadow-xl overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
-              <h3 className="text-base font-semibold text-white">Commit Details</h3>
+              <h3 id="commit-details-title" className="text-base font-semibold text-white">
+                Commit Details
+              </h3>
               <button
-                onClick={() => setSelectedCommitHash(null)}
-                className="rounded p-1 text-neutral-400 hover:text-white"
+                ref={drawerCloseBtnRef}
+                type="button"
+                onClick={handleCloseDrawer}
+                aria-label="Close commit details"
+                className="rounded p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -460,7 +577,13 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
                 <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
               </div>
             ) : detailError ? (
-              <div className="p-4 text-center text-xs text-rose-400">{detailError}</div>
+              <div className="mt-6">
+                <InlineNotification
+                  type="error"
+                  title="Failed to Load Details"
+                  message={detailError}
+                />
+              </div>
             ) : commitDetail ? (
               <div className="mt-6 space-y-6">
                 <div>
@@ -590,5 +713,21 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
         </div>
       )}
     </div>
+  );
+}
+
+export default function RepositoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: repoId } = use(params);
+
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+        </div>
+      }
+    >
+      <RepositoryDetailContent repoId={repoId} />
+    </Suspense>
   );
 }

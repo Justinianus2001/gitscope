@@ -1,27 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
 import type { RepositoryListItem } from '@gitscope/shared';
 import {
   FolderGit2,
   Plus,
-  Play,
   RotateCw,
   GitCommit,
   GitBranch,
   Calendar,
   AlertCircle,
   CheckCircle2,
-  Clock,
   Loader2,
 } from 'lucide-react';
+import { InlineNotification } from '@/components/ui/inline-notification';
 
 export default function RepositoriesPage() {
   const [repos, setRepos] = useState<RepositoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Global action notification
+  const [actionNotification, setActionNotification] = useState<{
+    type: 'error' | 'warning' | 'info' | 'success';
+    title?: string;
+    message: string;
+  } | null>(null);
 
   // Registration form state
   const [pathInput, setPathInput] = useState('');
@@ -32,7 +38,15 @@ export default function RepositoriesPage() {
   // Triggering analysis state
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
 
-  async function loadRepositories() {
+  // Determine if any analysis is currently in progress
+  const hasActiveAnalysis = useMemo(() => {
+    return (
+      analyzingIds.size > 0 ||
+      repos.some((repo) => repo.analysisStatus === 'running' || repo.analysisStatus === 'queued')
+    );
+  }, [repos, analyzingIds]);
+
+  const loadRepositories = useCallback(async () => {
     try {
       setError(null);
       const data = await api.getRepositories();
@@ -42,11 +56,66 @@ export default function RepositoriesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadRepositories();
-  }, []);
+  }, [loadRepositories]);
+
+  // Status polling for active background analysis runs
+  useEffect(() => {
+    if (!hasActiveAnalysis) return;
+
+    let active = true;
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await api.getRepositories();
+        if (active) {
+          consecutiveErrors = 0;
+          setRepos(data);
+          setAnalyzingIds((prev) => {
+            if (prev.size === 0) return prev;
+            const next = new Set(prev);
+            for (const repo of data) {
+              if (
+                repo.analysisStatus === 'completed' ||
+                repo.analysisStatus === 'failed' ||
+                repo.analysisStatus === 'running'
+              ) {
+                next.delete(repo.id);
+              }
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        consecutiveErrors++;
+        console.warn(
+          `Repository status polling error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+          err,
+        );
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          clearInterval(interval);
+          if (active) {
+            setActionNotification({
+              type: 'warning',
+              title: 'Auto-Refresh Paused',
+              message:
+                'Multiple consecutive status checks failed. Please verify your connection to the API server.',
+            });
+          }
+        }
+      }
+    }, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [hasActiveAnalysis]);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -78,11 +147,16 @@ export default function RepositoriesPage() {
 
   async function handleAnalyze(id: string) {
     setAnalyzingIds((prev) => new Set(prev).add(id));
+    setActionNotification(null);
     try {
       await api.analyzeRepository(id);
       await loadRepositories();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to start analysis.');
+      setActionNotification({
+        type: 'error',
+        title: 'Analysis Failed',
+        message: err instanceof Error ? err.message : 'Failed to start analysis.',
+      });
     } finally {
       setAnalyzingIds((prev) => {
         const next = new Set(prev);
@@ -103,6 +177,16 @@ export default function RepositoriesPage() {
           </p>
         </div>
       </div>
+
+      {/* Action Notification (replaces browser alerts) */}
+      {actionNotification && (
+        <InlineNotification
+          type={actionNotification.type}
+          title={actionNotification.title}
+          message={actionNotification.message}
+          onDismiss={() => setActionNotification(null)}
+        />
+      )}
 
       {/* Registration Card */}
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 shadow-sm">
@@ -164,6 +248,7 @@ export default function RepositoriesPage() {
           <h3 className="mt-2 text-sm font-semibold text-rose-200">Connection Error</h3>
           <p className="mt-1 text-xs text-rose-400">{error}</p>
           <button
+            type="button"
             onClick={() => {
               setLoading(true);
               loadRepositories();
@@ -249,13 +334,14 @@ export default function RepositoriesPage() {
 
                 <div className="mt-6 flex items-center justify-between border-t border-neutral-800/80 pt-4">
                   <Link
-                    href={`/repositories/${repo.id}`}
+                    href={`/repositories/${repo.id}?view=commits`}
                     className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
                   >
                     Explore Commits &rarr;
                   </Link>
 
                   <button
+                    type="button"
                     onClick={() => handleAnalyze(repo.id)}
                     disabled={isAnalyzing}
                     className="inline-flex items-center gap-1.5 rounded bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 transition-colors"
