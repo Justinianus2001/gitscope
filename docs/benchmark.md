@@ -8,16 +8,16 @@ All benchmarks were executed directly on the development environment using isola
 
 ## 1. Test Environment
 
-| Component            | Specification                                |
-| :------------------- | :------------------------------------------- |
-| **Operating System** | Windows 11 Enterprise x64 (Build 10.0.26100) |
-| **Filesystem**       | NTFS                                         |
-| **Node.js**          | `v22.22.1`                                   |
-| **Package Manager**  | `pnpm` `10.32.1`                             |
-| **Git CLI**          | `git version 2.45.1.windows.1`               |
-| **SQLite Driver**    | `better-sqlite3` `11.8.1` (SQLite 3.48.0)    |
-| **Fastify**          | `5.2.1`                                      |
-| **Next.js**          | `15.2.1` / React `19.0.0`                    |
+| Component            | Specification                                                                                                                |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **Operating System** | Windows 11 Enterprise x64 (Build 10.0.26100)                                                                                 |
+| **Filesystem**       | NTFS                                                                                                                         |
+| **Node.js**          | `v22.22.1`                                                                                                                   |
+| **Package Manager**  | `pnpm` `10.32.1`                                                                                                             |
+| **Git CLI**          | `git version 2.45.1.windows.1`                                                                                               |
+| **SQLite Driver**    | `better-sqlite3` `^11.8.1` (measured benchmark runtime: SQLite `3.49.2`; native driver bundle may vary across installations) |
+| **Fastify**          | `5.2.1`                                                                                                                      |
+| **Next.js**          | `15.2.1` / React `19.0.0`                                                                                                    |
 
 ---
 
@@ -60,7 +60,7 @@ All measurements below were gathered on Windows 11 x64 (NTFS) using isolated rea
 | **History Rewrite / Reset Re-import**        |       195.80 ms       |      173.67 ms      |      557.35 ms       |       206.48 ms       |         1,187.40 ms         | < 2,000 ms |
 | **Commit Pagination (Median)**               |        1.85 ms        |       3.50 ms       |       2.85 ms        |        2.66 ms        |           2.16 ms           |  < 50 ms   |
 | **File History (Median)**                    |        0.82 ms        |       0.54 ms       |       1.03 ms        |        0.67 ms        |           3.71 ms           |  < 50 ms   |
-| **Commit Graph Ancestry (Post-Remediation)** |        2.50 ms        |       2.21 ms       |       4.80 ms        |        6.15 ms        |        **42.26 ms**         |  < 100 ms  |
+| **Commit Graph Ancestry (Post-Remediation)** |        2.50 ms        |       2.21 ms       |       4.80 ms        |        6.15 ms        |        **48.31 ms**         |  < 100 ms  |
 | _Commit Graph (Pre-Remediation baseline)_    |        3.10 ms        |       2.94 ms       |       64.74 ms       |       268.14 ms       |        32,275.05 ms         |  < 100 ms  |
 | **Activity Aggregation (Median)**            |        2.30 ms        |       0.77 ms       |       1.94 ms        |        0.81 ms        |           0.41 ms           |  < 50 ms   |
 | **Hotspots Ranking (Median)**                |        1.95 ms        |       0.88 ms       |       1.64 ms        |        1.93 ms        |          22.05 ms           |  < 50 ms   |
@@ -104,13 +104,13 @@ In the benchmark data, no-op re-import latency closely tracks initial cold impor
 - **10,000 Commits**:
   - Raw SQL Cold Run: **36.99 ms**
   - Raw SQL Warm Median (5 runs): **35.45 ms** (compared to 31,995.80 ms pre-optimization = **902.6x raw SQL speedup**)
-  - End-to-End HTTP Inject Warm Median (5 runs): **48.31 ms** (compared to ~32,275 ms pre-optimization = **668x API speedup**)
+  - End-to-End HTTP Inject Warm Median (5 runs): **48.31 ms** (compared to 32,275.05 ms pre-optimization = **668.1x API speedup**)
 
 **Fixture Topology & Test Parameters**:
 
 - Fixture topology: Linear Git commit sequence with sequential parent chains and monotonically increasing author timestamps.
 - Repetition counts: 1 initial cold execution followed by 5 warm iterations recorded; median reported.
-- Environment: Windows 11 Enterprise x64 (NTFS), SQLite 3.48.0 via `better-sqlite3` in WAL mode.
+- Environment: Windows 11 Enterprise x64 (NTFS), SQLite runtime 3.49.2 via `better-sqlite3` in WAL mode (measured benchmark environment; SQLite version is provided by the native driver build and is not guaranteed to be identical across all installations).
 
 **Root Cause & Query Plan Diagnosis**:
 
@@ -145,16 +145,16 @@ In the benchmark data, no-op re-import latency closely tracks initial cold impor
    **Optimized Plan**:
    `SCAN a` (1 row per recursion step)
    `SEARCH cp USING INDEX sqlite_autoindex_commit_parents_1 (repo_id=? AND commit_hash=?)`
-   At every recursive step, SQLite now performs an immediate $O(1)$ point lookup into the composite primary key index `(repo_id, commit_hash, parent_index)`. This reduces the work for depth $D$ from $O(D \times N)$ to $O(D)$ ($O(N)$ for full linear ancestry).
+   At every recursive step, SQLite performs an indexed point lookup into the composite primary key B-tree index `(repo_id, commit_hash, parent_index)` in $O(\log N)$ time, where $N$ is the number of rows in `commit_parents`. For a linear ancestry traversal of depth $D$, this indexed query plan reduces the work from $O(D \times N)$ (an $O(N^2)$ algorithmic explosion on deep linear histories where $D \approx N$) to an $O(D \log N)$ traversal model (or $O(N \log N)$ for full linear ancestry). Note that $O(D \log N)$ describes the indexed ancestry traversal model under this verified query plan on linear and tree-like paths, rather than a universal guarantee for every arbitrary Git DAG where complex multi-parent branch and merge topologies scale with the number of traversed subgraph edges.
 4. **Performance Gain**:
-   - 1,000 commits: HTTP latency dropped from **268.14 ms to 6.15 ms** (43x speedup).
-   - 10,000 commits: HTTP latency dropped from **32,275 ms to 48.31 ms** (668x speedup; raw SQL down to 35.45 ms), comfortably meeting the `< 100 ms` SLA on the target development environment.
+   - 1,000 commits: HTTP latency dropped from **268.14 ms to 6.15 ms** (43.6x speedup).
+   - 10,000 commits: HTTP latency dropped from **32,275.05 ms to 48.31 ms** (668.1x API speedup; raw SQL down to 35.45 ms, a 902.6x raw SQL speedup), comfortably meeting the `< 100 ms` SLA on the target development environment.
 
 ### C. Scalability Highlights of Core Indexed Queries
 
 Unlike the recursive graph query, all other API queries exhibit textbook index scaling:
 
-- **Commit Pagination**: 1.85 ms (31 commits) $\to$ 2.16 ms (10,000 commits). Completely flat $O(1)$ indexed lookup via `idx_commits_repo_time_hash`.
+- **Commit Pagination**: 1.85 ms (31 commits) $\to$ 2.16 ms (10,000 commits). Scalable $O(\log N)$ indexed cursor scan via `idx_commits_repo_author_time`.
 - **File History**: 0.82 ms (31 commits) $\to$ 3.71 ms (10,000 commits). Index union via migration 002 keeps queries sub-5ms across 10,000 commits.
 - **Activity Aggregation**: 2.30 ms (31 commits) $\to$ 0.41 ms (10,000 commits). Bounded timestamp range scan executes in sub-millisecond time.
 - **Co-Change Mining**: 2.72 ms (31 commits) $\to$ 65.54 ms (10,000 commits). Combinatorial cutoff (`COCHANGE_MAX_FILES_PER_COMMIT = 200`) ensures safe quadratic pairing even across 10,000 commits.

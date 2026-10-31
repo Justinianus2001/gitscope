@@ -21,7 +21,7 @@ Before beginning, ensure your workstation meets the following requirements:
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/gitscope.git
+git clone https://github.com/Justinianus2001/gitscope.git
 cd gitscope
 ```
 

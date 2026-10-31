@@ -50,7 +50,7 @@ Queries must return **contiguous zero-filled buckets** across the entire request
 
 #### Range Bounds
 
-- Default range: Past 90 days if unspecified.
+- Default range: Earliest commit in repository (`SELECT MIN(author_time)` bounded by maximum interval limits) if `from` is unspecified, falling back to 365 days for empty repositories. The Web UI default preset is 1 year (`1y`).
 - Maximum range: 5 years (1826 days) for daily buckets, 10 years for weekly/monthly buckets. Requests exceeding maximum bounds or with $T_{\text{from}} > T_{\text{to}}$ are rejected with HTTP 400 (`INVALID_DATE_RANGE`).
 
 ---

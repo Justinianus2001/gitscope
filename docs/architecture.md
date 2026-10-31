@@ -271,11 +271,10 @@ erDiagram
 
 To ensure sub-10ms query execution across 10,000+ commit repositories:
 
-- `idx_commits_repo_time_hash`: `(repo_id, author_time DESC, hash DESC)` — Powers cursor-based pagination.
-- `idx_commits_repo_author`: `(repo_id, author_email)` — Powers contributor analytics.
+- `idx_commits_repo_author_time`: `(repo_id, author_time)` — Powers cursor pagination and chronological ordering.
 - `idx_file_changes_repo_path`: `(repo_id, path)` — Powers file history and hotspot frequency.
 - `idx_file_changes_repo_old_path`: `(repo_id, old_path)` — Enables SQLite `MULTI-INDEX OR` optimization for rename tracking.
-- `idx_commit_parents_lookup`: `(repo_id, commit_hash, parent_order)` — Powers topological DAG traversal.
+- Primary key on `commit_parents`: `(repo_id, commit_hash, parent_index)` (`sqlite_autoindex_commit_parents_1`) — Powers topological DAG traversal via $O(\log N)$ B-tree point lookups.
 
 ---
 
@@ -319,7 +318,7 @@ On large repositories (10,000+ commits), SQLite's query optimizer previously cho
 
 #### The Optimization:
 
-By enforcing a `CROSS JOIN` ordering constraint, SQLite is forced to drive the recursive step from the working table `ancestry a` into `commit_parents cp`, utilizing index `idx_commit_parents_lookup` (`repo_id, commit_hash, parent_order`):
+By enforcing a `CROSS JOIN` ordering constraint, SQLite is forced to drive the recursive step from the working table `ancestry a` into `commit_parents cp`, utilizing composite primary key index `sqlite_autoindex_commit_parents_1` (`repo_id, commit_hash, parent_index`):
 
 ```sql
 WITH RECURSIVE ancestry(hash, depth) AS (
@@ -338,7 +337,7 @@ SELECT hash FROM ancestry
 LIMIT :limit;
 ```
 
-Once the bounded node hashes are resolved via the index in **~35 ms**, commit metadata, ordered parents, and refs are retrieved via a secondary batched indexed lookup, keeping the total response latency under **~78 ms** at 10,000 commits.
+Once the bounded node hashes are resolved via the index in **~35.45 ms** (raw SQL warm median under the $O(D \log N)$ indexed traversal model on linear history), commit metadata, ordered parents, and refs are retrieved via secondary indexed lookups, keeping the total end-to-end HTTP response latency at **~48.31 ms** (warm median) at 10,000 commits. Note that $O(D \log N)$ models indexed lookup cost under this query plan for linear histories; on arbitrary DAG topologies with branches and merges, traversal cost scales with visited subgraph edges.
 
 ### 4. Co-Change Mining & Combinatorial Safety
 
