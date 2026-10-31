@@ -101,7 +101,7 @@ graph TD
         SqliteDB[("SQLite Database (WAL Mode — better-sqlite3)")]
     end
 
-    ApiClient -->|HTTP / JSON (REST)| Router
+    ApiClient -->|"HTTP / JSON (REST)"| Router
     Runner -->|execFile argument array| GitRepo
     Importer -->|Atomic Transactions| SqliteDB
     AnalyticsEngine -->|Indexed Recursive CTEs| SqliteDB
