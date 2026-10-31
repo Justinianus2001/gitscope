@@ -72,7 +72,7 @@ The working tree currently contains verified modifications from Milestone 7 (Pha
 
 ### Setup Workflow Evaluation:
 
-The documented onboarding sequence in [`README.md`](file:///c:/Users/lengo/Downloads/vibe-projects/gitscope/README.md) and [`docs/demo.md`](file:///c:/Users/lengo/Downloads/vibe-projects/gitscope/docs/demo.md) was evaluated against a fresh clone perspective:
+The documented onboarding sequence in [`README.md`](../README.md) and [`docs/demo.md`](demo.md) was evaluated against a fresh clone perspective:
 
 1. **Prerequisites Verification:**
    - Node.js `v22.22.1` and `pnpm 10.32.1` verified on Windows 11 NTFS.
@@ -83,7 +83,7 @@ The documented onboarding sequence in [`README.md`](file:///c:/Users/lengo/Downl
    - Verified that `scripts/setup-demo-repo.js` executes using pure Node.js built-ins (`node:fs`, `node:path`, `node:child_process`).
    - Verified idempotency: running `pnpm demo:setup` a second time inspects the existing repository, outputs commit and branch counts, and exits cleanly with exit code 0 without modifying or deleting files.
 4. **Automated Integration Test Verification:**
-   - Automated in [`apps/api/src/__tests__/demo-repo.test.ts`](file:///c:/Users/lengo/Downloads/vibe-projects/gitscope/apps/api/src/__tests__/demo-repo.test.ts): programmatically executes fresh setup, verifies 15 commits, 3 branches, 3 tags, registers the repo via Fastify API, triggers background analysis, and asserts all analytics endpoints.
+   - Automated in [`apps/api/src/__tests__/demo-repo.test.ts`](../apps/api/src/__tests__/demo-repo.test.ts): programmatically executes fresh setup, verifies 15 commits, 3 branches, 3 tags, registers the repo via Fastify API, triggers background analysis, and asserts all analytics endpoints.
 
 ---
 
@@ -91,20 +91,20 @@ The documented onboarding sequence in [`README.md`](file:///c:/Users/lengo/Downl
 
 ### Inspection Methodology:
 
-_(Explicit disclosure: This audit was performed via code inspection and unit-level DOM/state simulation tests in [`apps/web/src/__tests__/ux-state.test.ts`](file:///c:/Users/lengo/Downloads/vibe-projects/gitscope/apps/web/src/__tests__/ux-state.test.ts). No automated headless browser session [e.g. Playwright] was available in the execution environment.)_
+_(Explicit disclosure: This audit was performed via code inspection and unit-level DOM/state simulation tests in [`apps/web/src/__tests__/ux-state.test.ts`](../apps/web/src/__tests__/ux-state.test.ts). No automated headless browser session [e.g. Playwright] was available in the execution environment.)_
 
 ### Evaluated UX Capabilities:
 
-| Feature / Flow               | Implementation Mechanism                                                                                                                                                                                                                                                                                | Verified Status |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------: |
-| **URL-Synced Navigation**    | Tabs sync with `useSearchParams()` (`?view=commits` / `?view=graph`), wrapped in React `<Suspense>` for Next.js App Router static prerender compatibility.                                                                                                                                              |  **Verified**   |
-| **Inline Notifications**     | Reusable, accessible component ([`apps/web/src/components/ui/inline-notification.tsx`](file:///c:/Users/lengo/Downloads/vibe-projects/gitscope/apps/web/src/components/ui/inline-notification.tsx)) with `role="alert"`, `role="status"`, and `aria-live`. Browser native `alert()` completely removed. |  **Verified**   |
-| **Reactive Status Polling**  | 2-second interval polling during `queued` and `running` analysis states, with automatic cleanup when idle and a 5-error circuit breaker.                                                                                                                                                                |  **Verified**   |
-| **Commit Drawer Focus Trap** | Traps `Tab` and `Shift+Tab` inside modal; `Escape` key dismisses drawer; backdrop click dismisses drawer; focus is restored to the triggering commit row.                                                                                                                                               |  **Verified**   |
-| **Accessible Commit Rows**   | Commit list items refactored from non-semantic `<div>` elements to native `<button type="button">` with visible focus rings (`focus:ring-2 focus:ring-blue-500`).                                                                                                                                       |  **Verified**   |
-| **Responsive Canvas Height** | Graph container updated from static `h-[750px]` to `h-[calc(100vh-280px)] min-h-[500px]`, fitting standard 1366x768 and 1440x900 viewports without forcing page scrollbars.                                                                                                                             |  **Verified**   |
-| **Design System Cohesion**   | Standardized all remaining `zinc-*` classes in graph components and hex colors in Recharts/ReactFlow to Tailwind's `neutral-*` palette.                                                                                                                                                                 |  **Verified**   |
-| **Screenshots Status**       | README contains explicit Markdown comment placeholders (`<!-- Screenshot placeholder: ... -->`); no fake or synthetic images are claimed.                                                                                                                                                               |  **Verified**   |
+| Feature / Flow               | Implementation Mechanism                                                                                                                                                                                                                           | Verified Status |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------: |
+| **URL-Synced Navigation**    | Tabs sync with `useSearchParams()` (`?view=commits` / `?view=graph`), wrapped in React `<Suspense>` for Next.js App Router static prerender compatibility.                                                                                         |  **Verified**   |
+| **Inline Notifications**     | Reusable, accessible component ([`apps/web/src/components/ui/inline-notification.tsx`](../apps/web/src/components/ui/inline-notification.tsx)) with `role="alert"`, `role="status"`, and `aria-live`. Browser native `alert()` completely removed. |  **Verified**   |
+| **Reactive Status Polling**  | 2-second interval polling during `queued` and `running` analysis states, with automatic cleanup when idle and a 5-error circuit breaker.                                                                                                           |  **Verified**   |
+| **Commit Drawer Focus Trap** | Traps `Tab` and `Shift+Tab` inside modal; `Escape` key dismisses drawer; backdrop click dismisses drawer; focus is restored to the triggering commit row.                                                                                          |  **Verified**   |
+| **Accessible Commit Rows**   | Commit list items refactored from non-semantic `<div>` elements to native `<button type="button">` with visible focus rings (`focus:ring-2 focus:ring-blue-500`).                                                                                  |  **Verified**   |
+| **Responsive Canvas Height** | Graph container updated from static `h-[750px]` to `h-[calc(100vh-280px)] min-h-[500px]`, fitting standard 1366x768 and 1440x900 viewports without forcing page scrollbars.                                                                        |  **Verified**   |
+| **Design System Cohesion**   | Standardized all remaining `zinc-*` classes in graph components and hex colors in Recharts/ReactFlow to Tailwind's `neutral-*` palette.                                                                                                            |  **Verified**   |
+| **Screenshots Status**       | README contains explicit Markdown comment placeholders (`<!-- Screenshot placeholder: ... -->`); no fake or synthetic images are claimed.                                                                                                          |  **Verified**   |
 
 ---
 

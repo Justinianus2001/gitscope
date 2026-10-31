@@ -321,20 +321,20 @@ On large repositories (10,000+ commits), SQLite's query optimizer previously cho
 By enforcing a `CROSS JOIN` ordering constraint, SQLite is forced to drive the recursive step from the working table `ancestry a` into `commit_parents cp`, utilizing composite primary key index `sqlite_autoindex_commit_parents_1` (`repo_id, commit_hash, parent_index`):
 
 ```sql
-WITH RECURSIVE ancestry(hash, depth) AS (
-  SELECT target_hash, 0
-  FROM refs
-  WHERE repo_id = :repoId AND name = :refName
+WITH RECURSIVE ancestry(h) AS (
+  SELECT ?
   UNION
-  SELECT cp.parent_hash, a.depth + 1
+  SELECT cp.parent_hash
   FROM ancestry a
   CROSS JOIN commit_parents cp
-    ON cp.repo_id = :repoId
-   AND cp.commit_hash = a.hash
-  WHERE a.depth < :maxDepth
+    ON cp.repo_id = ?
+   AND cp.commit_hash = a.h
 )
-SELECT hash FROM ancestry
-LIMIT :limit;
+SELECT c.hash, c.author_name, c.author_time, c.subject
+FROM commits c
+WHERE c.repo_id = ? AND c.hash IN (SELECT h FROM ancestry)
+ORDER BY c.author_time DESC, c.hash DESC
+LIMIT ?;
 ```
 
 Once the bounded node hashes are resolved via the index in **~35.45 ms** (raw SQL warm median under the $O(D \log N)$ indexed traversal model on linear history), commit metadata, ordered parents, and refs are retrieved via secondary indexed lookups, keeping the total end-to-end HTTP response latency at **~48.31 ms** (warm median) at 10,000 commits. Note that $O(D \log N)$ models indexed lookup cost under this query plan for linear histories; on arbitrary DAG topologies with branches and merges, traversal cost scales with visited subgraph edges.

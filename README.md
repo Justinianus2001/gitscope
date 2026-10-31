@@ -13,43 +13,11 @@ Local-first Git repository analytics with interactive commit graphs, contributor
 
 ---
 
-## Visual Tour & Interface
-
-### 1. Interactive Commit Ancestry Graph
-
-Bounded topological DAG canvas powered by `@xyflow/react` (`ReactFlow`), featuring deterministic branch lane assignments, multi-parent merge indicators, release tag pills, an interactive MiniMap, and fluid pan/zoom navigation:
+## Visual Preview
 
 ![Interactive Commit Ancestry Graph](docs/screenshots/02-commit-graph.png)
 
-### 2. Accessible Commit Explorer
-
-Tabular commit history browser with real-time filtering (author, file path, date ranges) and cursor pagination. Supports full keyboard navigation with predictable focus management:
-
-![Commit Explorer](docs/screenshots/03-commit-explorer.png)
-
-### 3. Slide-Over Commit Detail Drawer
-
-Slide-over inspection drawer displaying commit metadata, parent hashes, ref tags, and per-file addition/deletion metrics with rename tracking. Implements modal focus trapping, `Escape` key dismissal, and focus restoration to the triggering row:
-
-![Commit Detail Drawer](docs/screenshots/04-commit-drawer.png)
-
-### 4. Contributor Activity Analytics & Leaderboard
-
-Chronological commit frequency and contributor volume visualizer powered by Recharts, featuring contiguous zero-filled UTC time buckets (`day`, `week`, `month`) and an identity-normalized contributor leaderboard:
-
-![Analytics Dashboard](docs/screenshots/05-analytics-dashboard.png)
-
-### 5. Architectural Co-Change Coupling & Churn Hotspots
-
-Data-mined file co-change relationships and modification hotspots, uncovering implicit architectural dependencies and maintenance risk areas without arbitrary file coupling limits:
-
-![Co-Change Coupling and File Hotspots](docs/screenshots/06-cochange-coupling.png)
-
-### 6. Repository Dashboard & Status Polling
-
-Clean repository management interface displaying registered repositories, default branches, commit counts, and reactive ingestion status polling:
-
-![Repository Dashboard](docs/screenshots/01-main-dashboard.png)
+_Figure 1: Interactive topological commit graph rendered with `@xyflow/react`, featuring deterministic branch lane assignment, multi-parent merge tracking, release tags, and pan/zoom navigation._
 
 ---
 
@@ -76,33 +44,53 @@ GitScope transforms local Git repositories into actionable architectural intelli
 
 ## Key Features
 
-- **Local Repository Management:**
-  - Strict filesystem sandboxing against `ALLOWED_REPOSITORY_ROOTS` to prevent directory traversal and symlink escapes.
-  - Idempotent registration and re-analysis.
-  - Real-time status polling for background analysis jobs.
-- **Interactive Commit Ancestry Graph:**
-  - Bounded topological DAG visualization powered by `@xyflow/react` (`ReactFlow`).
-  - Deterministic lane assignment, branch tracking, merge commit indicators, and release tag badges.
-  - Interactive MiniMap, viewport zoom/pan controls, and ref selector (switch between default branch, feature branches, and tags).
-- **Accessible Commit Explorer:**
-  - Fast, tabular commit browser with real-time author, file path, and UTC date-range filtering.
-  - Stable, cursor-based pagination with deterministic tie-breaking.
-  - Slide-over commit inspection drawer detailing commit message body, parent hashes, ref tags, and per-file addition/deletion metrics.
-  - Full keyboard accessibility with focus trapping, `Escape` key dismissal, backdrop dismissal, and focus restoration to the triggering row.
-- **Contributor Activity Analytics:**
-  - Interactive area chart visualizing commit frequency and active contributor volume over time.
-  - Contiguous, zero-filled UTC time buckets (`day`, `week`, `month`) powered by Recharts.
-  - Contributor leaderboard with normalized email identities (`LOWER(TRIM(email))`) and commit share percentages.
-- **Code Churn Hotspots:**
-  - Identifies the most frequently modified modules in the repository.
-  - Ranks files by distinct modifying commits, lines added, lines deleted, and last modification timestamp.
-- **Co-Change Coupling Mining:**
-  - Uncovers architectural dependencies by identifying pairs of files committed together across multiple independent changes.
-  - Configurable minimum support threshold ($\ge 2$ commits).
-  - Combinatorial safety ceiling: bulk commits touching over 200 files (`COCHANGE_MAX_FILES_PER_COMMIT`) are excluded from quadratic pairing to prevent CPU/memory spikes.
-- **Reliable Local Storage:**
-  - Embedded SQLite storage engine (`better-sqlite3`) configured with write-ahead logging (WAL) and strict foreign key cascades.
-  - Atomic transactional import pipeline that cleans previous sync data idempotently.
+### 1. Interactive Commit Ancestry Graph
+
+- **Topological DAG Canvas:** Bounded topological DAG visualization powered by `@xyflow/react` (`ReactFlow`).
+- **Branch & Merge Tracking:** Deterministic branch lane assignment, multi-parent merge commit indicators, and release tag badges.
+- **Interactive Navigation:** MiniMap, viewport zoom/pan controls, and branch/tag ref selector.
+
+_(See Figure 1 preview above)_
+
+### 2. Accessible Commit Explorer & Detail Drawer
+
+Tabular commit browser with real-time author, file path, and UTC date-range filtering, backed by stable cursor pagination:
+
+![Commit Explorer](docs/screenshots/03-commit-explorer.png)
+
+- **Slide-Over Detail Drawer:** Inspects commit metadata, parent hashes, ref tags, and per-file addition/deletion metrics with rename tracking.
+- **Keyboard Accessible:** Full keyboard navigation with focus trapping, `Escape` key dismissal, backdrop dismissal, and focus restoration to the triggering row.
+
+![Commit Detail Drawer](docs/screenshots/04-commit-drawer.png)
+
+### 3. Contributor Activity Analytics & Leaderboard
+
+Interactive area chart visualizing commit frequency and active contributor volume over time, powered by Recharts:
+
+![Analytics Dashboard](docs/screenshots/05-analytics-dashboard.png)
+
+- **Contiguous Time Buckets:** Zero-filled UTC time buckets (`day`, `week`, `month`) ensure accurate trend representation.
+- **Identity Normalization:** Contributor leaderboard normalizes email identities (`LOWER(TRIM(email))`) to consolidate commit share percentages.
+
+### 4. Architectural Co-Change Coupling & Churn Hotspots
+
+Data-mined file co-change relationships and modification hotspots, uncovering implicit architectural dependencies and maintenance risk areas:
+
+![Co-Change Coupling and File Hotspots](docs/screenshots/06-cochange-coupling.png)
+
+- **Code Churn Hotspots:** Ranks files by distinct modifying commits, lines added, lines deleted, and last modification timestamp.
+- **Co-Change Coupling Mining:** Identifies pairs of files committed together across multiple independent changes ($\ge 2$ commits).
+- **Combinatorial Safety:** Bulk commits touching over 200 files (`COCHANGE_MAX_FILES_PER_COMMIT`) are excluded from quadratic pairing to prevent CPU/memory spikes.
+
+### 5. Local Repository Management & Ingestion
+
+Clean management dashboard displaying registered repositories, default branches, and commit counts:
+
+![Repository Dashboard](docs/screenshots/01-main-dashboard.png)
+
+- **Path Sandboxing:** Strict allowlist validation against `ALLOWED_REPOSITORY_ROOTS` defeating traversal and symlink escapes.
+- **Reactive Status Polling:** Tracks background ingestion (`queued` $\to$ `running` $\to$ `completed`) with automated error circuit breaking.
+- **Transactional SQLite Storage:** Synchronous SQLite persistence (`better-sqlite3`) configured with write-ahead logging (WAL) and atomic transactions.
 
 ---
 
@@ -343,7 +331,7 @@ For complete threat modeling and mitigation proofs, see [docs/security.md](docs/
 
 ### Current Limitations
 
-- **Bounded Graph Depth:** The commit graph visualizer bounds ancestry retrieval to 300 commits per ref to prevent browser WebGL/DOM rendering degradation on massive histories. The full commit log remains accessible through the Commit Explorer.
+- **Bounded Graph Node Limit:** The commit graph visualizer bounds returned nodes to 300 commits per ref (`LIMIT 300`) to prevent browser WebGL/DOM rendering degradation on massive histories. The full commit log remains accessible through the Commit Explorer.
 - **Single-User Workstation Tool:** GitScope is designed as an engineer's personal diagnostic workstation application; it does not include multi-tenant user accounts, team permissions, or RBAC.
 - **Full History Re-Sync:** Re-running analysis currently re-syncs the full commit history idempotently rather than performing an early-exit HEAD hash comparison.
 - **Windows Process Creation Overhead:** Spawning individual Git CLI processes on Windows NTFS incurs ~120ms OS overhead per process. Synthetic test fixtures at scale are generated via `git fast-import` to avoid process-spawn bottlenecks during benchmarks.
@@ -363,6 +351,7 @@ For complete threat modeling and mitigation proofs, see [docs/security.md](docs/
 - [Step-by-Step Demo Walkthrough Guide](docs/demo.md)
 - [Benchmark Methodology & Performance Data](docs/benchmark.md)
 - [Mathematical Metrics Definitions](docs/metrics.md)
+- [Technical Claim Verification Audit](docs/technical-claim-audit.md)
 - [Milestone 7 Audit Report](docs/milestone-7-audit.md)
 
 ---

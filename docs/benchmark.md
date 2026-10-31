@@ -112,6 +112,23 @@ In the benchmark data, no-op re-import latency closely tracks initial cold impor
 - Repetition counts: 1 initial cold execution followed by 5 warm iterations recorded; median reported.
 - Environment: Windows 11 Enterprise x64 (NTFS), SQLite runtime 3.49.2 via `better-sqlite3` in WAL mode (measured benchmark environment; SQLite version is provided by the native driver build and is not guaranteed to be identical across all installations).
 
+**Merge-Heavy Graph Measurements (Empirically Measured on Branching DAG Fixtures)**:
+
+To evaluate query behavior on realistic non-linear histories featuring multiple concurrent branches and two-parent merge commits:
+
+- **1,000 Commits (83 Feature Branches, 83 Two-Parent Merges)**:
+  - Pre-Optimization Raw SQL Median: **161.89 ms**
+  - Optimized Raw SQL Median (`CROSS JOIN`): **2.80 ms** (Cold: 3.09 ms) $\to$ **57.9x raw SQL speedup**
+  - Reachable ancestry nodes: 1,000; outer query returns 301 rows (`limit + 1`).
+- **5,000 Commits (416 Feature Branches, 416 Two-Parent Merges)**:
+  - Optimized Raw SQL Median (`CROSS JOIN`): **14.79 ms** (Cold: 14.83 ms)
+  - Reachable ancestry nodes: 5,000; outer query returns 301 rows.
+- **10,000 Commits (833 Feature Branches, 833 Two-Parent Merges)**:
+  - Optimized Raw SQL Median (`CROSS JOIN`): **28.93 ms** (Cold: 29.14 ms)
+  - Reachable ancestry nodes: 10,000; outer query returns 301 rows.
+  - Heap memory delta: ~63.2 KB.
+  - _Topological Observation:_ On merge-heavy DAGs, the 10,000-commit query executes in 28.93 ms compared to 35.45 ms on a pure 10,000-deep linear chain. Because parallel feature branches merge back into trunk, the maximum topological path depth from HEAD is shallower (~6,500 levels vs. 10,000 levels), while `UNION` deduplicates convergent parent hashes so each unique commit node is added to the recursive working table only once.
+
 **Root Cause & Query Plan Diagnosis**:
 
 1. In the initial implementation of `apps/api/src/routes/graph.ts`:
@@ -207,28 +224,29 @@ LIMIT 50;
 
 ```sql
 EXPLAIN QUERY PLAN
-WITH RECURSIVE ancestry(hash, depth) AS (
-    SELECT target_hash, 0 FROM refs WHERE repo_id = ? AND name = ?
+WITH RECURSIVE ancestry(h) AS (
+    SELECT ?
     UNION
-    SELECT cp.parent_hash, a.depth + 1
+    SELECT cp.parent_hash
     FROM ancestry a
-    JOIN commit_parents cp ON cp.repo_id = ? AND cp.commit_hash = a.hash
-    WHERE a.depth < 300
+    CROSS JOIN commit_parents cp ON cp.repo_id = ? AND cp.commit_hash = a.h
 )
-SELECT c.*, GROUP_CONCAT(cp.parent_hash, ',') as parents
-FROM ancestry a
-JOIN commits c ON c.repo_id = ? AND c.hash = a.hash
-LEFT JOIN commit_parents cp ON cp.repo_id = ? AND cp.commit_hash = c.hash
-GROUP BY c.hash
-ORDER BY c.author_time DESC;
+SELECT c.hash, c.author_name, c.author_time, c.subject
+FROM commits c
+WHERE c.repo_id = ? AND c.hash IN (SELECT h FROM ancestry)
+ORDER BY c.author_time DESC, c.hash DESC
+LIMIT ?;
 ```
 
 **Plan:**
-`SETUP: SEARCH refs USING INDEX sqlite_autoindex_refs_1 (repo_id=? AND name=?)`
-`RECURSIVE STEP: SEARCH cp USING INDEX idx_commit_parents_lookup (repo_id=? AND commit_hash=?)`
 
-- **Complexity:** $O(D \cdot P)$ where $D \le 300$ and $P \le 2$ (average parent branching factor).
-- **Result:** Traversal runs in ~58ms for 500 nodes on disk SQLite.
+- `SETUP: SCAN CONSTANT ROW`
+- `RECURSIVE STEP: SCAN a -> SEARCH cp USING INDEX sqlite_autoindex_commit_parents_1 (repo_id=? AND commit_hash=?)`
+- `OUTER QUERY: SEARCH c USING INDEX idx_commits_repo_author_time (repo_id=?) -> SCAN ancestry -> USE TEMP B-TREE FOR ORDER BY`
+
+- **Complexity:** $O(D \log N)$ under this indexed join order on linear/tree-like ancestry (scaling with traversed subgraph edges $E_{\text{subgraph}}$ on merge-heavy DAGs).
+- **Limit Semantics:** The recursive CTE computes reachable ancestry nodes (deduplicated by `UNION`); returned node volume is bounded by the outer query's `LIMIT ?` (`limit + 1`, default: 301).
+- **Result:** Traversal executes in **~28.93 ms** for 10,000 commits on merge-heavy graphs (833 two-parent merges) and **~35.45 ms** on linear history. Commits, ordered parents, and refs are then resolved via secondary indexed lookups.
 
 ### 4. Activity Aggregation
 
