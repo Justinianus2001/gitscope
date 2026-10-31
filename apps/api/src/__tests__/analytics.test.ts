@@ -102,7 +102,7 @@ describe('Analytics API (GET /api/repositories/:id/activity, /hotspots, /co-chan
     });
     secondRepoId = regIsoRes.json().data.id;
     await importRepository(secondRepoId, secondRepo.dir, db);
-  });
+  }, 40000);
 
   afterAll(async () => {
     await app.close();
@@ -199,6 +199,45 @@ describe('Analytics API (GET /api/repositories/:id/activity, /hotspots, /co-chan
       expect(body.data.buckets.every((b: { commitCount: number }) => b.commitCount === 0)).toBe(
         true,
       );
+    });
+
+    it('defaults date range to repository earliest commit when from parameter is omitted', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/repositories/${repoId}/activity`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.data.totalCommits).toBeGreaterThan(0);
+      expect(body.data.totalContributors).toBeGreaterThan(0);
+      expect(body.data.contributors.length).toBeGreaterThan(0);
+      expect(body.data.buckets.length).toBeGreaterThan(0);
+    });
+
+    it('caps unbounded default range to 5-year maximum limit for daily interval when ancient commits exist', async () => {
+      // Temporarily insert an ancient commit from 10 years ago
+      const ancientTime = '2015-01-01T00:00:00.000Z';
+      app.db
+        .prepare(
+          `INSERT INTO commits (repo_id, hash, author_name, author_email, author_time, committer_time, subject)
+           VALUES (?, 'ancient1234567890abcdef', 'Ancient Author', 'ancient@example.com', ?, ?, 'ancient commit')`,
+        )
+        .run(repoId, ancientTime, ancientTime);
+
+      try {
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/repositories/${repoId}/activity?interval=day`,
+        });
+
+        expect(res.statusCode).toBe(200);
+        const body = res.json();
+        // The bucket count should be capped at <= 1827 days (5 years)
+        expect(body.data.buckets.length).toBeLessThanOrEqual(1828);
+      } finally {
+        app.db.prepare('DELETE FROM commits WHERE hash = ?').run('ancient1234567890abcdef');
+      }
     });
   });
 

@@ -102,13 +102,30 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
       if (queryParse.data.from) {
         fromDate = new Date(queryParse.data.from);
       } else {
-        fromDate = new Date(toDate);
-        if (interval === 'day') {
-          fromDate.setUTCDate(fromDate.getUTCDate() - 90);
-        } else if (interval === 'week') {
-          fromDate.setUTCDate(fromDate.getUTCDate() - 182); // ~26 weeks
+        // Query earliest commit in repository to show meaningful data by default
+        const earliestRow = fastify.db
+          .prepare('SELECT MIN(author_time) as min_time FROM commits WHERE repo_id = ?')
+          .get(repoId) as { min_time: string | null } | undefined;
+
+        if (earliestRow?.min_time) {
+          fromDate = new Date(earliestRow.min_time);
+          const maxDays = interval === 'day' ? 1826 : 3652;
+          const minAllowedTime = toDate.getTime() - maxDays * 24 * 60 * 60 * 1000;
+          if (fromDate.getTime() < minAllowedTime) {
+            fromDate = new Date(minAllowedTime);
+          }
+          if (fromDate.getTime() > toDate.getTime()) {
+            fromDate = new Date(toDate);
+          }
         } else {
-          fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 2); // 24 months
+          fromDate = new Date(toDate);
+          if (interval === 'day') {
+            fromDate.setUTCDate(fromDate.getUTCDate() - 365);
+          } else if (interval === 'week') {
+            fromDate.setUTCDate(fromDate.getUTCDate() - 365);
+          } else {
+            fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 2);
+          }
         }
       }
 

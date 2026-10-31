@@ -1,3 +1,4 @@
+import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
@@ -6,6 +7,7 @@ import { type EnvConfig } from '@gitscope/shared';
 import { loadConfig } from './config/index.js';
 import { createDb } from './db/client.js';
 import { migrate } from './db/migrator.js';
+import { findWorkspaceRoot } from './git/path-validator.js';
 import { healthRoutes } from './routes/health.js';
 import { repositoryRoutes } from './routes/repositories.js';
 import { commitRoutes } from './routes/commits.js';
@@ -27,7 +29,13 @@ declare module 'fastify' {
 
 export async function buildApp(options: AppOptions = {}): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
-  const db = options.db ?? createDb({ path: config.DATABASE_PATH });
+  const dbPath =
+    config.DATABASE_PATH === ':memory:'
+      ? ':memory:'
+      : path.isAbsolute(config.DATABASE_PATH)
+        ? config.DATABASE_PATH
+        : path.resolve(findWorkspaceRoot(), config.DATABASE_PATH);
+  const db = options.db ?? createDb({ path: dbPath });
 
   // Run pending schema migrations
   migrate(db);

@@ -14,7 +14,9 @@ export interface Migration {
 export function loadMigrationsFromDir(migrationsDir?: string): Migration[] {
   const dir = migrationsDir ?? path.join(__dirname, 'migrations');
   if (!fs.existsSync(dir)) {
-    return [];
+    throw new Error(
+      `Migrations directory not found at: ${dir}. Ensure migration files are packaged in production builds.`,
+    );
   }
 
   const files = fs

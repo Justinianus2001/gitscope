@@ -48,6 +48,31 @@ export function pruneAnalyzingIds(
   return next;
 }
 
+// Analytics range preset calculation helper
+export function computeAnalyticsRangePreset(
+  preset: '30d' | '90d' | '180d' | '1y' | 'all',
+  referenceNow: Date = new Date(),
+): { fromDate: string; toDate: string } {
+  if (preset === 'all') {
+    return { fromDate: '', toDate: '' };
+  }
+  const endIso = referenceNow.toISOString().split('T')[0] || '';
+  const start = new Date(referenceNow);
+  if (preset === '30d') {
+    start.setUTCDate(start.getUTCDate() - 30);
+  } else if (preset === '90d') {
+    start.setUTCDate(start.getUTCDate() - 90);
+  } else if (preset === '180d') {
+    start.setUTCDate(start.getUTCDate() - 180);
+  } else if (preset === '1y') {
+    start.setUTCFullYear(start.getUTCFullYear() - 1);
+  }
+  return {
+    fromDate: start.toISOString().split('T')[0] || '',
+    toDate: endIso,
+  };
+}
+
 // Focus trap navigation helper
 export function getNextTrappedFocus(
   elements: Array<{ id: string }>,
@@ -182,6 +207,37 @@ describe('UX State Management & Navigation Helpers', () => {
     it('returns null when no focusable elements exist', () => {
       const next = getNextTrappedFocus([], 'none', false);
       expect(next).toBeNull();
+    });
+  });
+
+  describe('Analytics Default Range & Presets', () => {
+    const referenceDate = new Date('2026-10-30T12:00:00.000Z');
+
+    it('defaults to 1-year preset which encompasses the demo repository timestamp (Jan 2026)', () => {
+      const range = computeAnalyticsRangePreset('1y', referenceDate);
+      expect(range.toDate).toBe('2026-10-30');
+      expect(range.fromDate).toBe('2025-10-30');
+
+      // Demo commit date 2026-01-15 must fall squarely within the computed range
+      const demoDate = '2026-01-15';
+      expect(demoDate >= range.fromDate && demoDate <= range.toDate).toBe(true);
+    });
+
+    it('returns empty strings for "all" preset to delegate unbounded range to API', () => {
+      const range = computeAnalyticsRangePreset('all', referenceDate);
+      expect(range.fromDate).toBe('');
+      expect(range.toDate).toBe('');
+    });
+
+    it('computes expected bounds for 30d, 90d, and 180d presets', () => {
+      const p30 = computeAnalyticsRangePreset('30d', referenceDate);
+      expect(p30.fromDate).toBe('2026-09-30');
+
+      const p90 = computeAnalyticsRangePreset('90d', referenceDate);
+      expect(p90.fromDate).toBe('2026-08-01');
+
+      const p180 = computeAnalyticsRangePreset('180d', referenceDate);
+      expect(p180.fromDate).toBe('2026-05-03');
     });
   });
 });

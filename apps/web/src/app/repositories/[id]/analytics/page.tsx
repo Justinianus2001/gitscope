@@ -47,7 +47,7 @@ export default function AnalyticsDashboardPage({ params }: { params: Promise<{ i
 
   // Time & aggregation controls
   const [interval, setInterval] = useState<ActivityInterval>('day');
-  const [rangePreset, setRangePreset] = useState<'30d' | '90d' | '180d' | '1y' | 'all'>('90d');
+  const [rangePreset, setRangePreset] = useState<'30d' | '90d' | '180d' | '1y' | 'all'>('1y');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
 
@@ -96,9 +96,9 @@ export default function AnalyticsDashboardPage({ params }: { params: Promise<{ i
     setToDate(endIso.split('T')[0] || '');
   }, []);
 
-  // Initialize 90-day preset
+  // Initialize 1-year preset so repositories (including demo) display data immediately
   useEffect(() => {
-    updateRangePreset('90d');
+    updateRangePreset('1y');
   }, [updateRangePreset]);
 
   // Load repository info
