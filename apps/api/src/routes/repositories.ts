@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import {
   createRepositoryRequestSchema,
+  startAnalysisRequestSchema,
   type RepositoryListItem,
   type AnalysisStatus,
 } from '@gitscope/shared';
@@ -223,6 +224,18 @@ export const repositoryRoutes: FastifyPluginAsync = async (fastify) => {
             message: 'Repository ID must be a valid UUID.',
           },
         });
+      }
+
+      if (request.body !== undefined && request.body !== null) {
+        const parseResult = startAnalysisRequestSchema.safeParse(request.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'INVALID_REQUEST',
+              message: parseResult.error.issues[0]?.message ?? 'Invalid request body.',
+            },
+          });
+        }
       }
 
       const repo = fastify.db

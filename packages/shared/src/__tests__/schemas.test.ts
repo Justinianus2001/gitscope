@@ -3,6 +3,7 @@ import {
   envConfigSchema,
   repositorySchema,
   changeTypeSchema,
+  startAnalysisRequestSchema,
   getGraphQuerySchema,
   getGraphResponseSchema,
   getActivityQuerySchema,
@@ -36,6 +37,14 @@ describe('Shared Schemas', () => {
     expect(changeTypeSchema.safeParse('modified').success).toBe(true);
     expect(changeTypeSchema.safeParse('renamed').success).toBe(true);
     expect(changeTypeSchema.safeParse('invalid_type').success).toBe(false);
+  });
+
+  it('validates start analysis request payload', () => {
+    expect(startAnalysisRequestSchema.safeParse(undefined).success).toBe(true);
+    expect(startAnalysisRequestSchema.safeParse({}).success).toBe(true);
+    expect(startAnalysisRequestSchema.safeParse({ unexpected: 'field' }).success).toBe(false);
+    expect(startAnalysisRequestSchema.safeParse('string').success).toBe(false);
+    expect(startAnalysisRequestSchema.safeParse([1, 2, 3]).success).toBe(false);
   });
 
   it('validates repository UUID and datetime', () => {

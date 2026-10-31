@@ -96,4 +96,57 @@ describe('Web API Client', () => {
     expect(coChanges.pairs[0].coChangeCount).toBe(2);
     expect(mockFetch.mock.calls[2][0]).toContain('/co-changes?minCount=2');
   });
+
+  it('omits Content-Type header when request has no body (e.g. analyzeRepository)', async () => {
+    let capturedOptions: RequestInit | undefined;
+    const mockFetch = vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
+      capturedOptions = options;
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              runId: '12345678-1234-4234-8234-1234567890ab',
+              status: 'queued',
+            },
+          }),
+      });
+    });
+
+    global.fetch = mockFetch;
+
+    const res = await api.analyzeRepository('12345678-1234-4234-8234-1234567890ab');
+    expect(res.status).toBe('queued');
+    expect(res.runId).toBe('12345678-1234-4234-8234-1234567890ab');
+    expect(capturedOptions?.method).toBe('POST');
+    expect(capturedOptions?.body).toBeUndefined();
+    expect((capturedOptions?.headers as Record<string, string>)?.['Content-Type']).toBeUndefined();
+  });
+
+  it('includes Content-Type: application/json when request has body (e.g. createRepository)', async () => {
+    let capturedOptions: RequestInit | undefined;
+    const mockFetch = vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
+      capturedOptions = options;
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              id: '12345678-1234-4234-8234-1234567890ab',
+              name: 'demo-repo',
+            },
+          }),
+      });
+    });
+
+    global.fetch = mockFetch;
+
+    const res = await api.createRepository('/path/to/repo');
+    expect(res.data.id).toBe('12345678-1234-4234-8234-1234567890ab');
+    expect(capturedOptions?.method).toBe('POST');
+    expect(capturedOptions?.body).toBe(JSON.stringify({ path: '/path/to/repo' }));
+    expect((capturedOptions?.headers as Record<string, string>)?.['Content-Type']).toBe(
+      'application/json',
+    );
+  });
 });

@@ -33,6 +33,9 @@ export const listRepositoriesResponseSchema = z.object({
 });
 export type ListRepositoriesResponse = z.infer<typeof listRepositoriesResponseSchema>;
 
+export const startAnalysisRequestSchema = z.object({}).strict().optional();
+export type StartAnalysisRequest = z.infer<typeof startAnalysisRequestSchema>;
+
 export const startAnalysisResponseSchema = z.object({
   data: z.object({
     runId: z.string().uuid(),

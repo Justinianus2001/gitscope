@@ -170,9 +170,24 @@ describe('Repository Routes', () => {
     expect(res.statusCode).toBe(404);
   });
 
-  it('POST /api/repositories/:id/analyze - triggers analysis and reports status', async () => {
+  async function waitForAnalysis(repoId: string) {
+    for (let i = 0; i < 50; i++) {
+      const run = app.db
+        .prepare(
+          "SELECT status FROM analysis_runs WHERE repo_id = ? AND status IN ('queued', 'running')",
+        )
+        .get(repoId);
+      if (!run) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+
+  it('POST /api/repositories/:id/analyze - triggers analysis and reports status with no body', async () => {
     const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
     const repoId = listRes.json().data[0].id;
+
+    await waitForAnalysis(repoId);
+    app.db.prepare('DELETE FROM analysis_runs WHERE repo_id = ?').run(repoId);
 
     const res = await app.inject({
       method: 'POST',
@@ -191,5 +206,121 @@ describe('Repository Routes', () => {
     });
     expect(statusRes.statusCode).toBe(200);
     expect(statusRes.json().data.runId).toBe(json.data.runId);
+  });
+
+  it('POST /api/repositories/:id/analyze - accepts JSON body {} with Content-Type: application/json', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    await waitForAnalysis(repoId);
+    app.db.prepare('DELETE FROM analysis_runs WHERE repo_id = ?').run(repoId);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(202);
+    const json = res.json();
+    expect(json.data.runId).toBeDefined();
+    expect(json.data.status).toBe('queued');
+  });
+
+  it('POST /api/repositories/:id/analyze - rejects Content-Type: application/json with empty string body with 400', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+
+    expect(res.statusCode).toBe(400);
+    const json = res.json();
+    expect(json.error.code).toBe('FST_ERR_CTP_EMPTY_JSON_BODY');
+  });
+
+  it('POST /api/repositories/:id/analyze - rejects malformed JSON with 400', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: '{ malformed json',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('POST /api/repositories/:id/analyze - rejects invalid payload schema with 400 INVALID_REQUEST', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      payload: { unexpectedProperty: 123 },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const json = res.json();
+    expect(json.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('POST /api/repositories/:id/analyze - rejects non-object array payload with 400 INVALID_REQUEST', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      payload: [1, 2, 3],
+    });
+
+    expect(res.statusCode).toBe(400);
+    const json = res.json();
+    expect(json.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('POST /api/repositories/:id/analyze - rejects concurrent run with 409 when analysis is already queued or running', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/repositories' });
+    const repoId = listRes.json().data[0].id;
+
+    await waitForAnalysis(repoId);
+    app.db.prepare('DELETE FROM analysis_runs WHERE repo_id = ?').run(repoId);
+    app.db
+      .prepare(
+        "INSERT INTO analysis_runs (id, repo_id, status, created_at) VALUES (?, ?, 'running', ?)",
+      )
+      .run(crypto.randomUUID(), repoId, new Date().toISOString());
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/repositories/${repoId}/analyze`,
+    });
+
+    expect(res.statusCode).toBe(409);
+    const json = res.json();
+    expect(json.error.code).toBe('ANALYSIS_ALREADY_RUNNING');
+
+    app.db.prepare('DELETE FROM analysis_runs WHERE repo_id = ?').run(repoId);
   });
 });
