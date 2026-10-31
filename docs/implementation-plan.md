@@ -136,7 +136,7 @@
   - [x] Audited repository re-analysis and edge cases in `apps/api/src/__tests__/reanalysis.test.ts` (8 tests):
     - [x] Incremental updates when new commits are added to existing branches.
     - [x] Newly created branches and tags correctly reflected in refs table.
-    - [x] Moved branches or tags updated in refs table target_hash.
+    - [x] Moved branches or tags updated in refs table `target_hash`.
     - [x] Unreachable/reset commits pruned cleanly upon re-analysis inside transaction (`DELETE FROM commits WHERE repo_id = ?`).
     - [x] No-op re-import idempotency with zero duplicate rows.
     - [x] Aborted/failed imports preserving previous state without data corruption.
@@ -145,7 +145,7 @@
   - [x] Audited analytics correctness against `docs/metrics.md` in `apps/api/src/__tests__/analytics-audit.test.ts` (8 tests):
     - [x] Contiguous zero-filled daily buckets and inclusive timestamp boundaries.
     - [x] Weekly bucketing aligned to Monday and ISO week transitions across year boundaries (e.g. 2025-W53 / 2026-W01).
-    - [x] Contributor identity normalization (lowercase trimmed email, display name updated to latest active name, author_name fallback).
+    - [x] Contributor identity normalization (lowercase trimmed email, display name updated to latest active name, `author_name` fallback).
     - [x] Binary files additions/deletions returning `null` (not 0), and UI rendering `binary` instead of `+0 / -0`.
     - [x] Co-change pair deduplication for multiple edits to the same path within a single commit.
     - [x] Combinatorial safety threshold (`COCHANGE_MAX_FILES_PER_COMMIT`), commit exclusion, and `excludedLargeCommitsCount` reporting.

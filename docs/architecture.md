@@ -9,7 +9,7 @@ GitScope is a local-first, privacy-preserving Git repository analytics applicati
 ```mermaid
 graph TD
     subgraph Browser ["Web Client (Next.js 15 — Port 3000)"]
-        UI[Repository & Commit Views]
+        UI["Repository & Commit Views"]
         GraphView["Interactive Commit Graph (@xyflow/react)"]
         AnalyticsView["Analytics Dashboard (Recharts)"]
         ApiClient["Typed API Client (apps/web/src/lib/api.ts)"]
@@ -19,7 +19,7 @@ graph TD
     end
 
     subgraph Server ["Backend API (Fastify 5 — Port 4000)"]
-        Router[Fastify Route Handlers]
+        Router["Fastify Route Handlers"]
         Validator["Path Allowlist & Validator (path-validator.ts)"]
         Runner["Safe Git CLI Runner (runner.ts)"]
         Parser["Streaming Git Log Parser (parser.ts)"]
@@ -39,10 +39,10 @@ graph TD
         SqliteDB[("SQLite Database (WAL Mode — better-sqlite3)")]
     end
 
-    ApiClient -->|HTTP / JSON (REST)| Router
-    Runner -->|execFile discrete argument arrays| GitRepo
-    Importer -->|Atomic Transactions| SqliteDB
-    AnalyticsEngine -->|Indexed Recursive CTEs| SqliteDB
+    ApiClient -->|"HTTP / JSON (REST)"| Router
+    Runner -->|"execFile discrete argument arrays"| GitRepo
+    Importer -->|"Atomic Transactions"| SqliteDB
+    AnalyticsEngine -->|"Indexed Recursive CTEs"| SqliteDB
 ```
 
 ---

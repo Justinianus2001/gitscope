@@ -24,18 +24,18 @@ All repository operations begin at the path validation boundary (`validateReposi
 
 ```mermaid
 flowchart TD
-    Req[Incoming Path Input] --> CheckEmpty{Non-empty string?}
+    Req["Incoming Path Input"] --> CheckEmpty{"Non-empty string?"}
     CheckEmpty -- No --> Err400["Reject 400 (INVALID_INPUT)"]
     CheckEmpty -- Yes --> ResolveAbs["Resolve Absolute Path (path.resolve)"]
     ResolveAbs --> Realpath["Canonicalize via fs.realpathSync.native"]
     Realpath -- Fails ENOENT --> Err404["Reject 404 (PATH_NOT_FOUND)"]
-    Realpath -- Succeeds --> CheckDir{Is a directory?}
+    Realpath -- Succeeds --> CheckDir{"Is a directory?"}
     CheckDir -- No --> ErrNotDir["Reject 422 (PATH_NOT_DIRECTORY)"]
     CheckDir -- Yes --> CheckRoots{"Path inside ALLOWED_REPOSITORY_ROOTS?"}
     CheckRoots -- No --> Err403["Reject 403 (PATH_NOT_ALLOWED)"]
     CheckRoots -- Yes --> CheckGit{"Contains .git subdirectory?"}
     CheckGit -- No --> Err422["Reject 422 (NOT_A_GIT_REPOSITORY)"]
-    CheckGit -- Yes --> Allow[Authorized Canonical Path]
+    CheckGit -- Yes --> Allow["Authorized Canonical Path"]
 ```
 
 ### Boundary Guarantees:
