@@ -87,26 +87,47 @@ File hotspots identify files exhibiting high revision frequency and cumulative m
 
 #### Metrics Computed Per File Path $p$:
 
-1. **Distinct Commits** ($C_{\text{distinct}}$):
+1. **Distinct Commits** ($`C_{\text{distinct}}`$):
    The primary hotspot score.
-   ```math
-   C_{\text{distinct}}(p) = \left| \{ c.\text{hash} \mid \exists f \in \text{file\_changes}(c) \text{ with } f.\text{path} = p \} \right|
-   ```
-2. **Known Additions** ($\Sigma_{\text{add}}$):
+
+```math
+C_{\text{distinct}}(p) =
+\left|
+\left\{
+c.\text{hash}
+\mid
+\exists f \in \text{file\_changes}(c)
+\text{ with } f.\text{path} = p
+\right\}
+\right|
+```
+
+2. **Known Additions** ($`\Sigma_{\text{add}}`$):
    Sum of lines added across commits modifying $p$, excluding binary modifications.
-   ```math
-   \Sigma_{\text{add}}(p) = \sum_{f \in \text{changes}(p), f.\text{additions} \ne \text{NULL}} f.\text{additions}
-   ```
-3. **Known Deletions** ($\Sigma_{\text{del}}$):
+
+```math
+\Sigma_{\text{add}}(p) =
+\sum_{\substack{f \in \text{changes}(p) \\ f.\text{additions} \ne \text{NULL}}}
+f.\text{additions}
+```
+
+3. **Known Deletions** ($`\Sigma_{\text{del}}`$):
    Sum of lines deleted across commits modifying $p$, excluding binary modifications.
-   ```math
-   \Sigma_{\text{del}}(p) = \sum_{f \in \text{changes}(p), f.\text{deletions} \ne \text{NULL}} f.\text{deletions}
-   ```
-4. **Last Modified Time** ($T_{\text{last}}$):
+
+```math
+\Sigma_{\text{del}}(p) =
+\sum_{\substack{f \in \text{changes}(p) \\ f.\text{deletions} \ne \text{NULL}}}
+f.\text{deletions}
+```
+
+4. **Last Modified Time** ($`T_{\text{last}}`$):
    Latest author timestamp among commits modifying $p$.
-   ```math
-   T_{\text{last}}(p) = \max_{c \in \text{modifying\_commits}(p)} c.\text{author\_time}
-   ```
+
+```math
+T_{\text{last}}(p) =
+\max_{c \in \text{modifying\_commits}(p)}
+c.\text{author\_time}
+```
 
 #### Ranking & Tie-Breaking
 
