@@ -111,21 +111,37 @@ graph TD
 
 ## Screenshots
 
-<!-- Screenshot placeholder: Interactive Commit Ancestry Graph with Multi-Branch Topology -->
+### 1. Interactive Commit Ancestry Graph
 
-> _Placeholder: Interactive commit ancestry graph showing branch divergence, two-parent merge node, ref badges, Minimap, and zoom controls._
+Bounded topological DAG visualization powered by `@xyflow/react` (`ReactFlow`), featuring multi-lane branch tracking, two-parent merge commit indicators, release tag badges, an interactive MiniMap, and viewport zoom/pan controls:
 
-<!-- Screenshot placeholder: Commit Explorer & Slide-Over Inspector Drawer -->
+![Interactive Commit Ancestry Graph](docs/screenshots/02-commit-graph.png)
 
-> _Placeholder: Accessible commit explorer table with author search filter, date range picker, and slide-over commit detail drawer._
+### 2. Accessible Commit Explorer & Slide-Over Inspector Drawer
 
-<!-- Screenshot placeholder: Contributor Activity Over Time Chart & File Hotspots Table -->
+Tabular commit history browser with real-time filtering (author, file path, date ranges) and cursor pagination. Clicking any commit opens an accessible slide-over drawer showing parent hashes, branch/tag refs, and line churn (`+` / `-`) across modified, deleted, and renamed files:
 
-> _Placeholder: Analytics dashboard showing chronological commit volume chart, contributor leaderboard, and ranked file hotspots._
+![Commit Explorer](docs/screenshots/03-commit-explorer.png)
 
-<!-- Screenshot placeholder: Structural Co-Change Coupling Analysis -->
+![Commit Inspector Drawer](docs/screenshots/04-commit-drawer.png)
 
-> _Placeholder: Co-change coupling table displaying ranked pairs of files frequently modified together in shared commits._
+### 3. Contributor Activity Over Time & Churn Analytics
+
+Chronological commit frequency and contributor volume visualizer powered by Recharts, accompanied by summary stat cards and a contributor leaderboard with normalized email identities:
+
+![Analytics Dashboard](docs/screenshots/05-analytics-dashboard.png)
+
+### 4. Structural Co-Change Coupling & File Hotspots
+
+Data-mined file co-change associations and churn hotspots, exposing implicit architectural coupling and frequently modified modules:
+
+![Co-Change Coupling and File Hotspots](docs/screenshots/06-cochange-coupling.png)
+
+### 5. Repository Management & Ingestion Dashboard
+
+Clean, responsive dashboard displaying registered local Git repositories, default branches, commit counts, and real-time ingestion status polling:
+
+![Repository Dashboard](docs/screenshots/01-main-dashboard.png)
 
 ---
 
